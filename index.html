@@ -89,8 +89,37 @@
   .btn-danger{background:#FEE2E2;color:#991B1B;}
   .btn-danger:hover{background:#FECACA;}
 
+  /* ===== Member tabs ===== */
+  .member-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;padding:6px;background:var(--gray-100);border-radius:10px;overflow-x:auto;}
+  .member-tab{padding:6px 12px;border-radius:7px;font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+  .member-tab:hover{background:white;}
+  .member-tab.active{background:var(--primary);color:white;box-shadow:var(--shadow-sm);}
+  .member-tab .badge{background:rgba(255,255,255,.25);color:inherit;padding:1px 6px;border-radius:8px;font-size:10px;}
+  .member-tab:not(.active) .badge{background:white;}
+
+  /* ===== Status filter pills ===== */
+  .status-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .status-pill{padding:5px 11px;border-radius:14px;font-size:12px;font-weight:600;background:white;color:var(--gray-600);border:1.5px solid var(--gray-200);}
+  .status-pill:hover{border-color:var(--primary-light);}
+  .status-pill.active{background:var(--primary);color:white;border-color:var(--primary);}
+
+  /* ===== Performance summary banner ===== */
+  .perf-banner{background:linear-gradient(135deg,#1F4E79,#2D5F8E);color:white;border-radius:12px;padding:16px 20px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .perf-banner h3{margin:0 0 4px;font-size:16px;font-weight:800;}
+  .perf-banner-sub{font-size:11px;opacity:.75;margin-bottom:12px;}
+  .perf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .perf-stat{background:rgba(255,255,255,.1);border-radius:8px;padding:10px;}
+  .perf-stat-label{font-size:10px;opacity:.75;font-weight:700;letter-spacing:.04em;}
+  .perf-stat-value{font-size:22px;font-weight:800;margin-top:2px;}
+  .perf-stat-sub{font-size:10px;opacity:.6;}
+  .perf-total{background:rgba(255,255,255,.18);}
+  .perf-total .perf-stat-value{font-size:28px;}
+  @media(max-width:768px){
+    .perf-grid{grid-template-columns:repeat(2,1fr);}
+  }
+
   /* ===== Kanban ===== */
-  .kanban{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;margin-top:8px;}
+  .kanban{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;margin-top:8px;}
   .kanban-col{background:var(--gray-100);border-radius:10px;padding:10px;min-height:240px;}
   .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:10px;padding:0 4px;}
   .kanban-col-count{background:white;color:var(--gray-600);padding:2px 8px;border-radius:10px;font-size:11px;}
@@ -99,6 +128,8 @@
   .kanban-col[data-status="check"] .kanban-col-head{color:var(--yellow);}
   .kanban-col[data-status="done"] .kanban-col-head{color:var(--green);}
   .kanban-col[data-status="hold"] .kanban-col-head{color:var(--accent);}
+  .kanban-col[data-status="failed"] .kanban-col-head{color:#7C2D12;}
+  .kanban-col[data-status="failed"]{background:#FEF2F2;}
   .task-card{background:white;border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
   .task-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
   .task-card[data-priority="high"]{border-left-color:var(--accent);}
@@ -307,12 +338,24 @@ const COMPANY_LABEL = { fb:'Feeling Bar', mw:'滿屋設計', npw:'凱文南坡�
 const COMPANY_KEYS = ['fb','mw','npw'];
 
 const STATUS = {
-  plan:  { label: '📋 計畫 Plan',  color: 'var(--gray-500)' },
-  do:    { label: '🚀 執行 Do',    color: 'var(--primary)'  },
-  check: { label: '🔍 檢視 Check', color: 'var(--yellow)'   },
-  done:  { label: '✅ 完成 Act',   color: 'var(--green)'    },
-  hold:  { label: '⛔ 卡關 Hold',  color: 'var(--accent)'   },
+  plan:   { label: '📋 計畫 Plan',  color: 'var(--gray-500)' },
+  do:     { label: '🚀 執行 Do',    color: 'var(--primary)'  },
+  check:  { label: '🔍 檢視 Check', color: 'var(--yellow)'   },
+  done:   { label: '✅ 完成 Act',   color: 'var(--green)'    },
+  hold:   { label: '⛔ 卡關 Hold',  color: 'var(--accent)'   },
+  failed: { label: '❌ 失敗 Fail',  color: '#7C2D12'         },
 };
+const KANBAN_ORDER = ['plan','do','check','done','hold','failed'];
+
+// 評分量表
+const SCORE_LEVELS = {
+  1: '1 ・ 簡單',
+  2: '2 ・ 略易',
+  3: '3 ・ 中等',
+  4: '4 ・ 進階',
+  5: '5 ・ 高階',
+};
+const BONUS_LEVELS = [-10,-7,-5,-3,-1,0,1,3,5,7,10];
 const PRIORITY = { high:'高 ⚡', med:'中', low:'低' };
 const AUTH = {
   L1: '🟢 L1 自決即報',
@@ -334,6 +377,9 @@ let STATE   = null;             // server-returned init data
 let currentCompany = null;
 let currentPage = 'kanban';
 let loginCompany = 'fb';
+
+// Kanban 看板的篩選狀態（assignee 與 status 都用 '*' 代表全部）
+let kanbanFilter = { assignee: '*', status: '*' };
 
 //=========================================================================
 // API client
@@ -602,35 +648,89 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 function renderKanban(m) {
   const tasks = (STATE.tasks?.[currentCompany]) || [];
   const me = STATE.me;
-  const myView = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
-  // staff 在 server 端已過濾為自己的任務；這裡無需再過濾
-  const grouped = { plan:[], do:[], check:[], done:[], hold:[] };
-  tasks.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
+  const isLeader = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+  const canCreate = isLeader;
+  const canScore = me.isLord || me.role === 'admin';
+
+  // 收集所有 assignee 列表（合併目前任務指派 + 帳號清單）
+  const assigneeSet = new Set();
+  tasks.forEach(t => { if (t.assignee) assigneeSet.add(t.assignee); });
+  if (STATE.accounts && STATE.accounts[currentCompany]) {
+    STATE.accounts[currentCompany].forEach(u => assigneeSet.add(u.username));
+  }
+  const assignees = Array.from(assigneeSet).sort();
+
+  // 統計每位 assignee 的 done 件數（用於分頁徽章）
+  const doneByAssignee = {};
+  tasks.forEach(t => {
+    if (t.status === 'done' && t.assignee) {
+      doneByAssignee[t.assignee] = (doneByAssignee[t.assignee] || 0) + 1;
+    }
+  });
+
+  // 套用篩選
+  const filtered = tasks.filter(t => {
+    if (kanbanFilter.assignee !== '*' && t.assignee !== kanbanFilter.assignee) return false;
+    if (kanbanFilter.status !== '*' && t.status !== kanbanFilter.status) return false;
+    return true;
+  });
+  const grouped = { plan:[], do:[], check:[], done:[], hold:[], failed:[] };
+  filtered.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
   Object.keys(grouped).forEach(k =>
     grouped[k].sort((a,b)=>(b.priority==='high')-(a.priority==='high') || (a.deadline||'').localeCompare(b.deadline||''))
   );
-  const canCreate = me.isLord || ['admin','manager'].indexOf(me.role)>=0;
+
+  // 員工視角下的考績摘要
+  const showPerf = (kanbanFilter.assignee !== '*') && isLeader;
+  const perfData = showPerf ? computeMemberScore(tasks, kanbanFilter.assignee) : null;
+
+  // 看板 columns 順序：依篩選決定
+  const colsToShow = kanbanFilter.status === '*' ? KANBAN_ORDER : [kanbanFilter.status];
 
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">任務看板</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司視角':'我的任務'} ・ 共 ${tasks.length} 件</p>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${isLeader?'領導視角':'我的任務'} ・ 共 ${tasks.length} 件（篩選後 ${filtered.length} 件）</p>
       <div class="page-actions">
         ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
         <button class="btn btn-ghost" onclick="document.getElementById('refreshBtn').click()">🔄 重新整理</button>
+        ${(kanbanFilter.assignee!=='*'||kanbanFilter.status!=='*')?`<button class="btn btn-ghost" onclick="resetKanbanFilter()">✕ 清除篩選</button>`:''}
       </div>
     </div>
 
-    <details class="help-block">
-      <summary>💡 任務卡使用說明（軍師心法）</summary>
-      <div style="margin-top:6px;line-height:1.7;">
-        每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。其中「為什麼」與「紅線」是最常被省略卻最重要的——沒有它，下屬只能死板照做或不敢決定。<br>
-        狀態流轉（PDCA）：📋 計畫 → 🚀 執行 → 🔍 檢視 → ✅ 完成。卡關時可暫放 ⛔ Hold 並寫明阻塞原因。
+    ${isLeader ? `
+      <div class="member-tabs">
+        <button class="member-tab ${kanbanFilter.assignee==='*'?'active':''}" data-assignee="*">全部 <span class="badge">${tasks.length}</span></button>
+        ${assignees.map(a => `
+          <button class="member-tab ${kanbanFilter.assignee===a?'active':''}" data-assignee="${escapeHtml(a)}">
+            ${escapeHtml(a)} <span class="badge">${doneByAssignee[a]||0}</span>
+          </button>
+        `).join('')}
       </div>
-    </details>
+    ` : ''}
 
-    <div class="kanban">
-      ${['plan','do','check','done','hold'].map(s => `
+    <div class="status-pills">
+      <button class="status-pill ${kanbanFilter.status==='*'?'active':''}" data-status="*">全部</button>
+      ${KANBAN_ORDER.map(s => `
+        <button class="status-pill ${kanbanFilter.status===s?'active':''}" data-status="${s}">${STATUS[s].label}</button>
+      `).join('')}
+    </div>
+
+    ${showPerf ? perfBanner(perfData) : ''}
+
+    ${(kanbanFilter.assignee==='*' && kanbanFilter.status==='*') ? `
+      <details class="help-block">
+        <summary>💡 任務卡使用說明（軍師心法）</summary>
+        <div style="margin-top:6px;line-height:1.7;">
+          每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。<br>
+          狀態流轉：📋 計畫 → 🚀 執行 → 🔍 檢視 → ✅ 完成（加分）；阻塞用 ⛔ Hold；放棄／失敗用 ❌ Failed（扣分）。<br>
+          ${canScore?'<b>主公／admin 限定</b>：每張任務可設「複雜度（1-5）」「技術度（1-5）」與「加減分（-10~+10）」，作為員工年度考績依據。':''}
+        </div>
+      </details>
+    ` : ''}
+
+    <div class="kanban" style="${colsToShow.length===1?'grid-template-columns:1fr;':''}">
+      ${colsToShow.map(s => `
         <div class="kanban-col" data-status="${s}">
           <div class="kanban-col-head">
             <span>${STATUS[s].label}</span>
@@ -643,17 +743,88 @@ function renderKanban(m) {
       `).join('')}
     </div>
   `;
+
+  // 綁定事件
   m.querySelectorAll('.task-card').forEach(c => c.addEventListener('click', () => openTaskModal(c.dataset.id)));
+  m.querySelectorAll('.member-tab').forEach(b => b.addEventListener('click', () => {
+    kanbanFilter.assignee = b.dataset.assignee;
+    go('kanban');
+  }));
+  m.querySelectorAll('.status-pill').forEach(b => b.addEventListener('click', () => {
+    kanbanFilter.status = b.dataset.status;
+    go('kanban');
+  }));
+}
+
+function resetKanbanFilter() {
+  kanbanFilter = { assignee:'*', status:'*' };
+  go('kanban');
+}
+
+// 計算單一員工的考績摘要
+function computeMemberScore(allTasks, assignee) {
+  const own = allTasks.filter(t => t.assignee === assignee);
+  const done   = own.filter(t => t.status === 'done');
+  const failed = own.filter(t => t.status === 'failed');
+  const hold   = own.filter(t => t.status === 'hold');
+  const inProgress = own.filter(t => ['plan','do','check'].indexOf(t.status)>=0);
+
+  const sum = (arr, k) => arr.reduce((s,t) => s + (Number(t[k])||0), 0);
+  const pairSum = arr => arr.reduce((s,t) => s + (Number(t.complexity)||0) + (Number(t.techDifficulty)||0), 0);
+
+  const baseScore   = pairSum(done);
+  const failScore   = pairSum(failed);
+  const bonusScore  = sum(own, 'bonusPoints');
+  const totalScore  = baseScore - failScore + bonusScore;
+
+  const avgComp = done.length ? (sum(done,'complexity')/done.length).toFixed(1) : '–';
+  const avgTech = done.length ? (sum(done,'techDifficulty')/done.length).toFixed(1) : '–';
+
+  return {
+    name: assignee,
+    totalTasks: own.length,
+    done: done.length,
+    failed: failed.length,
+    hold: hold.length,
+    inProgress: inProgress.length,
+    baseScore, failScore, bonusScore, totalScore,
+    avgComp, avgTech,
+  };
+}
+
+function perfBanner(p) {
+  return `
+    <div class="perf-banner">
+      <h3>👤 ${escapeHtml(p.name)} ・ 考績總覽</h3>
+      <div class="perf-banner-sub">含全部任務統計 ・ 公式：完成分 − 失敗分 + 加減分</div>
+      <div class="perf-grid">
+        <div class="perf-stat"><div class="perf-stat-label">✅ 完成</div><div class="perf-stat-value">${p.done}</div><div class="perf-stat-sub">基礎分 +${p.baseScore}</div></div>
+        <div class="perf-stat"><div class="perf-stat-label">❌ 失敗</div><div class="perf-stat-value">${p.failed}</div><div class="perf-stat-sub">扣分 −${p.failScore}</div></div>
+        <div class="perf-stat"><div class="perf-stat-label">主公加減</div><div class="perf-stat-value" style="color:${p.bonusScore<0?'#FCA5A5':'#A7F3D0'};">${p.bonusScore>=0?'+':''}${p.bonusScore}</div><div class="perf-stat-sub">手動調整</div></div>
+        <div class="perf-stat perf-total"><div class="perf-stat-label">🏆 年度總分</div><div class="perf-stat-value">${p.totalScore>=0?'+':''}${p.totalScore}</div><div class="perf-stat-sub">複雜${p.avgComp} ・ 技術${p.avgTech}</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;opacity:.75;">
+        進行中 ${p.inProgress} ・ 卡關 ${p.hold} ・ 共 ${p.totalTasks} 件
+      </div>
+    </div>
+  `;
 }
 function taskCard(t) {
   const today = new Date().toISOString().slice(0,10);
-  const overdue = t.deadline && t.deadline < today && t.status !== 'done';
+  const overdue = t.deadline && t.deadline < today && t.status !== 'done' && t.status !== 'failed';
+  const complexity = Number(t.complexity)||0;
+  const techDiff   = Number(t.techDifficulty)||0;
+  const bonus      = Number(t.bonusPoints)||0;
+  const taskScore  = complexity + techDiff;
+  const showScore  = (complexity > 0 || techDiff > 0);
   return `
     <div class="task-card" data-id="${t.id}" data-priority="${t.priority||'med'}">
       <div class="task-title">${escapeHtml(t.title)}</div>
       <div class="task-meta">
         <span class="task-tag auth-${t.authLevel||'L2'}">${(AUTH[t.authLevel]||AUTH.L2).split(' ')[0]}${t.authLevel||'L2'}</span>
         <span class="task-tag">→${escapeHtml(t.assignee||'未指派')}</span>
+        ${showScore?`<span class="task-tag" style="background:#EEF2FF;color:#3730A3;" title="複雜度${complexity} + 技術度${techDiff}">★${taskScore}</span>`:''}
+        ${bonus!==0?`<span class="task-tag" style="background:${bonus>0?'var(--green-light)':'var(--orange-light)'};color:${bonus>0?'var(--green)':'var(--orange)'};">${bonus>0?'+':''}${bonus}</span>`:''}
         ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}</span>`:''}
       </div>
     </div>
@@ -671,9 +842,11 @@ function openTaskModal(id) {
     assignee: me.isLord ? '' : me.username,
     creator:  me.username,
     priority:'med', authLevel:'L2', status:'plan',
+    complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
     company: currentCompany,
     createdAt:'', notes:[]
   };
+  const canScore = me.isLord || me.role === 'admin';
 
   // 取得使用者列表（給 assignee 下拉用）
   // 主公 / admin 從 STATE.accounts；其餘成員退而求其次用 STATE.me.username 或既有任務的 assignee 集合
@@ -745,7 +918,49 @@ function openTaskModal(id) {
         <select class="field-select" id="f-status">
           ${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${data.status===k?'selected':''}>${v.label}</option>`).join('')}
         </select>
+        <div class="field-hint">✅ Done = 加分 ・ ❌ Failed = 扣分 ・ ⛔ Hold = 不計分</div>
       </div>
+
+      ${canScore ? `
+        <div style="margin-top:18px;padding:14px 14px 4px;border:1.5px dashed var(--primary-light);border-radius:10px;background:#F8FAFC;">
+          <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:8px;">
+            🎯 主公評分（admin 限定）
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label class="field-label">複雜度（業務面）</label>
+              <select class="field-select" id="f-complexity">
+                <option value="0" ${!data.complexity?'selected':''}>未評分</option>
+                ${Object.entries(SCORE_LEVELS).map(([k,v]) => `<option value="${k}" ${String(data.complexity)===k?'selected':''}>${v}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label">技術度（執行面）</label>
+              <select class="field-select" id="f-techDifficulty">
+                <option value="0" ${!data.techDifficulty?'selected':''}>未評分</option>
+                ${Object.entries(SCORE_LEVELS).map(([k,v]) => `<option value="${k}" ${String(data.techDifficulty)===k?'selected':''}>${v}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">加減分（特例調整 −10 ~ +10）</label>
+            <select class="field-select" id="f-bonusPoints">
+              ${BONUS_LEVELS.map(n => `<option value="${n}" ${Number(data.bonusPoints)===n?'selected':''}>${n>0?'+':''}${n}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">加減分原因（選填）</label>
+            <input class="field-input" id="f-bonusReason" value="${escapeHtml(data.bonusReason||'')}" placeholder="例：超期完成但客戶滿意；同錯誤反覆三次">
+          </div>
+          <div class="field-hint" style="margin-bottom:6px;">本卡分數預覽：${(()=>{
+            const c=Number(data.complexity)||0, td=Number(data.techDifficulty)||0, b=Number(data.bonusPoints)||0;
+            const base = c+td;
+            const sign = data.status==='failed' ? -1 : (data.status==='done' ? 1 : 0);
+            const total = base*sign + b;
+            return `★${base} ・ 加減 ${b>=0?'+':''}${b} ・ 本卡計入 ${total>=0?'+':''}${total}（${data.status==='done'?'已加分':data.status==='failed'?'已扣分':'尚未結算'}）`;
+          })()}</div>
+        </div>
+      ` : ''}
       ${data.notes && data.notes.length ? `
       <div class="field">
         <label class="field-label">進度紀錄</label>
@@ -763,12 +978,12 @@ function openTaskModal(id) {
       ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
       <span style="flex:1;"></span>
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
-      ${canEdit ? `<button class="btn btn-primary" onclick="saveTask(${isNew?'null':JSON.stringify(data.id)})">${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
+      ${canEdit ? `<button class="btn btn-primary" onclick='saveTask(${isNew?'null':JSON.stringify(data.id)})'>${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
     `,
   });
 }
 async function saveTask(id) {
-  const get = sel => document.getElementById(sel).value.trim();
+  const get = sel => { const el = document.getElementById(sel); return el ? el.value.trim() : ''; };
   const title = get('f-title');
   if (!title) { showToast('任務名稱必填','error'); return; }
   const newNote = get('f-newnote');
@@ -786,6 +1001,13 @@ async function saveTask(id) {
     authLevel:  get('f-auth'),
     status:     get('f-status'),
   };
+  // 評分欄位（僅 admin/lord 看得到欄位，後端也會做雙重防禦）
+  if (document.getElementById('f-complexity')) {
+    task.complexity     = Number(get('f-complexity')) || 0;
+    task.techDifficulty = Number(get('f-techDifficulty')) || 0;
+    task.bonusPoints    = Number(get('f-bonusPoints')) || 0;
+    task.bonusReason    = get('f-bonusReason');
+  }
   if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, text:newNote }];
 
   try {
