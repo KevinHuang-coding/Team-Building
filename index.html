@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>主公作戰指揮室</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F4E79'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E主%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --primary:#1F4E79; --primary-dark:#0F3454; --primary-light:#D9E2F3;
+    --accent:#C00000; --green:#548235; --green-light:#E2EFDA;
+    --yellow:#BF8F00; --yellow-light:#FFF2CC;
+    --orange:#C65911; --orange-light:#FBE5D6;
+    --gray-50:#F9FAFB; --gray-100:#F3F4F6; --gray-200:#E5E7EB;
+    --gray-300:#D1D5DB; --gray-400:#9CA3AF; --gray-500:#6B7280;
+    --gray-600:#4B5563; --gray-700:#374151; --gray-800:#1F2937;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.04);
+    --shadow:0 2px 6px rgba(0,0,0,.08);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+    --radius:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;line-height:1.55;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit;}
+  input,textarea,select{font-family:inherit;font-size:14px;}
+  textarea{resize:vertical;min-height:60px;}
+  a{color:var(--primary);text-decoration:none;}
+  .hidden{display:none!important;}
+
+  /* ===== Login ===== */
+  #login{min-height:100vh;background:linear-gradient(135deg,#1F4E79 0%,#0F3454 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{background:white;border-radius:16px;padding:32px 28px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);}
+  .login-title{text-align:center;margin:0 0 4px;color:var(--primary);font-size:22px;font-weight:800;letter-spacing:.05em;}
+  .login-sub{text-align:center;color:var(--gray-500);font-size:12px;margin-bottom:24px;}
+  .company-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px;background:var(--gray-100);padding:4px;border-radius:10px;}
+  .company-tab{padding:10px 8px;border-radius:7px;font-size:13px;font-weight:600;color:var(--gray-600);transition:all .2s;}
+  .company-tab.active{background:white;color:var(--primary);box-shadow:var(--shadow-sm);}
+  .form-group{margin-bottom:14px;}
+  .form-label{display:block;font-size:12px;color:var(--gray-600);margin-bottom:6px;font-weight:600;}
+  .form-input,.form-select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:8px;background:white;transition:border-color .15s;}
+  .form-input:focus,.form-select:focus{outline:none;border-color:var(--primary);}
+  .login-btn{width:100%;padding:12px;background:var(--primary);color:white;border-radius:8px;font-weight:700;font-size:15px;margin-top:8px;transition:background .2s;}
+  .login-btn:hover{background:var(--primary-dark);}
+  .login-btn:disabled{background:var(--gray-300);cursor:not-allowed;}
+  .login-error{color:var(--accent);font-size:12px;text-align:center;margin-top:10px;min-height:14px;}
+  .login-divider{display:flex;align-items:center;color:var(--gray-400);margin:18px 0;font-size:11px;}
+  .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--gray-200);}
+  .login-divider span{padding:0 10px;}
+  .lord-btn{width:100%;padding:10px;background:#F4E5C5;color:#7C5C00;border:1.5px dashed #BF8F00;border-radius:8px;font-weight:700;font-size:13px;}
+  .lord-btn:hover{background:#EFD9A8;}
+
+  /* ===== App Shell ===== */
+  #app{min-height:100vh;display:none;}
+  #app.show{display:flex;flex-direction:column;}
+  .topbar{background:var(--primary);color:white;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+  .topbar-brand{font-weight:800;font-size:15px;letter-spacing:.04em;}
+  .topbar-company{background:rgba(255,255,255,.18);padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;}
+  .topbar-spacer{flex:1;}
+  .topbar-user{font-size:12px;opacity:.85;}
+  .topbar-btn{padding:6px 10px;border-radius:6px;background:rgba(255,255,255,.12);font-size:12px;font-weight:600;color:white;}
+  .topbar-btn:hover{background:rgba(255,255,255,.22);}
+
+  .layout{flex:1;display:flex;}
+  .sidenav{width:200px;background:white;border-right:1px solid var(--gray-200);padding:14px 8px;display:flex;flex-direction:column;gap:4px;}
+  .sidenav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-weight:600;color:var(--gray-700);text-align:left;font-size:13.5px;}
+  .sidenav-item:hover{background:var(--gray-100);}
+  .sidenav-item.active{background:var(--primary-light);color:var(--primary);}
+  .sidenav-item .icon{width:20px;text-align:center;font-size:15px;}
+  .sidenav-divider{height:1px;background:var(--gray-200);margin:8px 4px;}
+  .sidenav-section{font-size:11px;color:var(--gray-400);font-weight:700;letter-spacing:.05em;padding:6px 12px;text-transform:uppercase;}
+
+  .main{flex:1;padding:20px 24px;overflow-y:auto;max-width:100%;}
+  .page-header{margin-bottom:20px;}
+  .page-title{font-size:22px;font-weight:800;color:var(--gray-800);margin:0 0 4px;}
+  .page-sub{font-size:13px;color:var(--gray-500);margin:0;}
+  .page-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .btn{padding:8px 14px;border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
+  .btn-primary{background:var(--primary);color:white;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-ghost{background:white;color:var(--gray-700);border:1px solid var(--gray-200);}
+  .btn-ghost:hover{background:var(--gray-100);}
+  .btn-danger{background:#FEE2E2;color:#991B1B;}
+  .btn-danger:hover{background:#FECACA;}
+
+  /* ===== Kanban ===== */
+  .kanban{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;margin-top:8px;}
+  .kanban-col{background:var(--gray-100);border-radius:10px;padding:10px;min-height:240px;}
+  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:10px;padding:0 4px;}
+  .kanban-col-count{background:white;color:var(--gray-600);padding:2px 8px;border-radius:10px;font-size:11px;}
+  .kanban-col[data-status="plan"] .kanban-col-head{color:var(--gray-700);}
+  .kanban-col[data-status="do"] .kanban-col-head{color:var(--primary);}
+  .kanban-col[data-status="check"] .kanban-col-head{color:var(--yellow);}
+  .kanban-col[data-status="done"] .kanban-col-head{color:var(--green);}
+  .kanban-col[data-status="hold"] .kanban-col-head{color:var(--accent);}
+
+  .task-card{background:white;border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
+  .task-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
+  .task-card[data-priority="high"]{border-left-color:var(--accent);}
+  .task-card[data-priority="med"]{border-left-color:var(--yellow);}
+  .task-card[data-priority="low"]{border-left-color:var(--green);}
+  .task-title{font-weight:700;font-size:13.5px;margin:0 0 6px;color:var(--gray-800);}
+  .task-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:11px;color:var(--gray-500);}
+  .task-tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-600);font-size:10px;font-weight:600;}
+  .task-tag.auth-L1{background:var(--green-light);color:var(--green);}
+  .task-tag.auth-L2{background:var(--yellow-light);color:var(--yellow);}
+  .task-tag.auth-L3{background:var(--orange-light);color:var(--orange);}
+  .task-tag.auth-L4{background:#FCE7F3;color:#9F1239;}
+  .task-deadline{margin-left:auto;}
+  .task-deadline.overdue{color:var(--accent);font-weight:700;}
+
+  /* ===== Modal ===== */
+  .modal-mask{position:fixed;inset:0;background:rgba(15,52,84,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
+  .modal-mask.show{display:flex;}
+  .modal{background:white;border-radius:14px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:1;}
+  .modal-title{font-size:17px;font-weight:800;margin:0;color:var(--gray-800);}
+  .modal-close{font-size:22px;color:var(--gray-400);padding:0 4px;}
+  .modal-close:hover{color:var(--gray-700);}
+  .modal-body{padding:18px 22px;}
+  .modal-foot{padding:14px 22px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:8px;background:var(--gray-50);}
+
+  .field{margin-bottom:14px;}
+  .field-label{display:block;font-size:12px;color:var(--gray-600);font-weight:700;margin-bottom:5px;}
+  .field-label .req{color:var(--accent);}
+  .field-hint{font-size:11px;color:var(--gray-400);margin-top:4px;}
+  .field-input,.field-select,.field-textarea{width:100%;padding:9px 11px;border:1.5px solid var(--gray-200);border-radius:7px;background:white;}
+  .field-input:focus,.field-select:focus,.field-textarea:focus{outline:none;border-color:var(--primary);}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+  /* ===== Weekly Report ===== */
+  .report-card{background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow-sm);margin-bottom:14px;}
+  .report-week-picker{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+  .report-section{margin-bottom:16px;}
+  .report-section-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .report-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+  .report-icon.done{background:var(--green);}
+  .report-icon.block{background:var(--accent);}
+  .report-icon.next{background:var(--primary);}
+  .report-icon.decide{background:var(--yellow);}
+  .report-icon.mood{background:var(--gray-500);}
+  .report-section-title{font-weight:700;font-size:14px;color:var(--gray-800);}
+  .related-tasks{background:var(--orange-light);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--gray-700);}
+  .related-tasks-title{font-weight:700;color:var(--orange);margin-bottom:4px;font-size:11px;}
+
+  /* ===== OGSM ===== */
+  .ogsm-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  .ogsm-block{background:white;border-radius:12px;padding:18px 20px;box-shadow:var(--shadow-sm);border-left:4px solid var(--primary);}
+  .ogsm-block h3{margin:0 0 8px;font-size:15px;color:var(--primary);font-weight:800;display:flex;align-items:center;gap:8px;}
+  .ogsm-block h3 .letter{background:var(--primary);color:white;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .ogsm-row{display:grid;grid-template-columns:1fr 90px 90px 110px;gap:8px;padding:8px 0;border-bottom:1px dashed var(--gray-200);align-items:center;font-size:12.5px;}
+  .ogsm-row.head{font-weight:700;color:var(--gray-500);font-size:11px;border-bottom:2px solid var(--gray-300);}
+  .ogsm-row:last-child{border-bottom:none;}
+  .ogsm-progress{height:6px;border-radius:3px;background:var(--gray-200);overflow:hidden;margin-top:3px;}
+  .ogsm-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--primary));}
+
+  /* ===== PDCA Dashboard ===== */
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  .stat-card{background:white;border-radius:10px;padding:16px;box-shadow:var(--shadow-sm);}
+  .stat-label{font-size:11px;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .stat-value{font-size:26px;font-weight:800;color:var(--gray-800);margin:4px 0;}
+  .stat-sub{font-size:11px;color:var(--gray-400);}
+  .stat-card.plan{border-top:3px solid var(--gray-400);}
+  .stat-card.do{border-top:3px solid var(--primary);}
+  .stat-card.check{border-top:3px solid var(--yellow);}
+  .stat-card.done{border-top:3px solid var(--green);}
+  .pdca-flow{background:white;border-radius:12px;padding:18px;box-shadow:var(--shadow-sm);}
+  .pdca-flow h3{margin:0 0 12px;font-size:14px;color:var(--gray-700);}
+  .bar-row{display:grid;grid-template-columns:120px 1fr 60px;gap:10px;align-items:center;margin-bottom:6px;font-size:12px;}
+  .bar-track{height:14px;background:var(--gray-100);border-radius:7px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:7px;}
+
+  /* ===== Toast ===== */
+  .toast-stack{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:90vw;}
+  .toast{background:var(--gray-800);color:white;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow-lg);animation:toast-in .25s ease;}
+  .toast.success{background:var(--green);}
+  .toast.error{background:var(--accent);}
+  .toast.warn{background:var(--yellow);}
+  @keyframes toast-in{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+  /* ===== Mobile ===== */
+  @media (max-width:768px){
+    .layout{flex-direction:column;}
+    .sidenav{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--gray-200);padding:8px;gap:4px;flex-wrap:nowrap;}
+    .sidenav-item{flex-shrink:0;padding:8px 12px;font-size:12.5px;}
+    .sidenav-divider,.sidenav-section{display:none;}
+    .main{padding:14px;}
+    .kanban{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .field-row,.field-row-3{grid-template-columns:1fr;}
+    .ogsm-row{grid-template-columns:1fr;gap:4px;}
+    .ogsm-row.head{display:none;}
+    .topbar-user{display:none;}
+  }
+
+  .empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;}
+  .empty-state-icon{font-size:48px;opacity:.4;margin-bottom:8px;}
+
+  details.help-block{background:var(--primary-light);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--gray-700);}
+  details.help-block summary{cursor:pointer;font-weight:700;color:var(--primary);}
+  details.help-block[open] summary{margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<!-- ===== Login Screen ===== -->
+<div id="login">
+  <div class="login-card">
+    <h1 class="login-title">主公作戰指揮室</h1>
+    <p class="login-sub">Commander's War Room ・ v1.0</p>
+
+    <div class="company-tabs">
+      <button class="company-tab active" data-company="feelingbar">Feeling Bar</button>
+      <button class="company-tab" data-company="manwu">滿屋設計</button>
+      <button class="company-tab" data-company="nanpowan">凱文南坡萬</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">使用者</label>
+      <select class="form-select" id="loginUser"></select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">密碼</label>
+      <input class="form-input" type="password" id="loginPwd" placeholder="輸入密碼" autocomplete="off">
+    </div>
+
+    <button class="login-btn" id="loginBtn">登入</button>
+
+    <div class="login-error" id="loginError"></div>
+
+    <div class="login-divider"><span>OR</span></div>
+
+    <button class="lord-btn" id="lordBtn">⚔️ 主公專屬登入（跨公司 + OGSM）</button>
+  </div>
+</div>
+
+<!-- ===== App Shell ===== -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-brand">⚔️ 作戰指揮室</span>
+    <span class="topbar-company" id="topCompany"></span>
+    <span class="topbar-spacer"></span>
+    <span class="topbar-user" id="topUser"></span>
+    <button class="topbar-btn" id="exportBtn" title="匯出資料">⬇</button>
+    <button class="topbar-btn" id="importBtn" title="匯入資料">⬆</button>
+    <button class="topbar-btn" id="logoutBtn">登出</button>
+  </div>
+
+  <div class="layout">
+    <nav class="sidenav" id="sidenav"></nav>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+
+<!-- ===== Modals (Generic) ===== -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal" id="modalBox">
+    <div class="modal-head">
+      <h3 class="modal-title" id="modalTitle">標題</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<input type="file" id="importFile" accept=".json" style="display:none">
+
+<script>
+//=========================================================================
+// 主公作戰指揮室 ・ v1.0
+// 為 Kevin 主公量身打造 — 軍師奉上
+//
+// 【設定區】下面 ACCOUNTS_DEFAULT 是預設帳號清單。
+// 主公補完帳密後，可：
+//   (a) 直接編輯本檔案的 ACCOUNTS_DEFAULT 物件，或
+//   (b) 用主公帳號登入後在「公司管理」頁直接增刪改（推薦）
+//=========================================================================
+
+const APP_KEY = 'kevin-cmd-app-v1';
+
+const COMPANY_LABEL = {
+  feelingbar: 'Feeling Bar',
+  manwu: '滿屋設計',
+  nanpowan: '凱文南坡萬',
+};
+
+// 主公專屬帳號（跨公司 + OGSM 權限）
+const LORD_USER = { username: '主公', password: '050916' };
+
+// 各公司預設帳號清單（password 為空字串者代表「待主公補密」）
+const ACCOUNTS_DEFAULT = {
+  feelingbar: [
+    { username: 'Kevin執行長', password: '050916', role: 'admin' },
+    // 主公下輪補：以下為佔位，請改密碼或新增/刪除
+    { username: '嚕嚕',         password: '',       role: 'manager' },
+    { username: '使用者A',       password: '',       role: 'staff'   },
+    { username: '使用者B',       password: '',       role: 'staff'   },
+  ],
+  manwu: [
+    { username: 'Kevin',     password: '050916', role: 'admin'   },
+    { username: 'Lulu',      password: '100002', role: 'manager' },
+    { username: 'Pei-ying',  password: '100003', role: 'staff'   },
+    { username: 'Sherry',    password: '100004', role: 'staff'   },
+    { username: '之曦',       password: '100005', role: 'staff'   },
+    { username: 'Kid',       password: '100006', role: 'staff'   },
+  ],
+  nanpowan: [
+    { username: 'Molly',  password: '999999', role: 'manager' },
+    { username: '阿軒',    password: '888888', role: 'staff'   },
+    { username: '小捲',    password: '111111', role: 'staff'   },
+    { username: 'Vic',    password: '333333', role: 'staff'   },
+    { username: '小李',    password: '777777', role: 'staff'   },
+  ],
+};
+
+// 任務狀態（PDCA + Hold）
+const STATUS = {
+  plan:  { label: '📋 計畫 Plan',  color: 'var(--gray-500)' },
+  do:    { label: '🚀 執行 Do',    color: 'var(--primary)'  },
+  check: { label: '🔍 檢視 Check', color: 'var(--yellow)'   },
+  done:  { label: '✅ 完成 Act',   color: 'var(--green)'    },
+  hold:  { label: '⛔ 卡關 Hold',  color: 'var(--accent)'   },
+};
+
+const PRIORITY = { high:'高 ⚡', med:'中', low:'低' };
+const AUTH = {
+  L1: '🟢 L1 自決即報',
+  L2: '🟡 L2 報備執行',
+  L3: '🟠 L3 請示後行',
+  L4: '🔴 L4 主公專斷',
+};
+
+//=========================================================================
+// State 與 Storage
+//=========================================================================
+let DB = loadDB();
+let session = null;        // {company, username, role, isLord}
+let currentCompany = null; // 主公切換時用
+let currentPage = 'kanban';
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(APP_KEY);
+    if(raw) return migrate(JSON.parse(raw));
+  }catch(e){}
+  return defaultDB();
+}
+function migrate(db){
+  if(!db.meta) db.meta = { version:'1.0', createdAt:new Date().toISOString() };
+  if(!db.accounts) db.accounts = JSON.parse(JSON.stringify(ACCOUNTS_DEFAULT));
+  // 補齊：若預設新增了帳號，合併進來（不覆蓋已有密碼）
+  Object.keys(ACCOUNTS_DEFAULT).forEach(c => {
+    if(!db.accounts[c]) db.accounts[c] = [];
+    ACCOUNTS_DEFAULT[c].forEach(def => {
+      if(!db.accounts[c].find(u => u.username === def.username)){
+        db.accounts[c].push({...def});
+      }
+    });
+  });
+  if(!db.tasks) db.tasks = { feelingbar:[], manwu:[], nanpowan:[] };
+  if(!db.reports) db.reports = { feelingbar:[], manwu:[], nanpowan:[] };
+  if(!db.ogsm) db.ogsm = { feelingbar:emptyOgsm(), manwu:emptyOgsm(), nanpowan:emptyOgsm() };
+  return db;
+}
+function defaultDB(){
+  return {
+    meta: { version:'1.0', createdAt:new Date().toISOString() },
+    accounts: JSON.parse(JSON.stringify(ACCOUNTS_DEFAULT)),
+    tasks:   { feelingbar:[], manwu:[], nanpowan:[] },
+    reports: { feelingbar:[], manwu:[], nanpowan:[] },
+    ogsm:    { feelingbar:emptyOgsm(), manwu:emptyOgsm(), nanpowan:emptyOgsm() },
+  };
+}
+function emptyOgsm(){
+  return {
+    objective:'',
+    goals:[],         // {name, current, target, deadline}
+    strategies:[],    // {name, description, owner}
+    measures:[],      // {name, formula, current, target, deadline, owner}
+    lastUpdated:null,
+  };
+}
+function saveDB(){
+  DB.meta.lastModified = new Date().toISOString();
+  localStorage.setItem(APP_KEY, JSON.stringify(DB));
+}
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+//=========================================================================
+// Login
+//=========================================================================
+let loginCompany = 'feelingbar';
+function refreshLoginUsers(){
+  const sel = document.getElementById('loginUser');
+  const list = (DB.accounts[loginCompany]||[]);
+  sel.innerHTML = list.map(u => `<option value="${escapeHtml(u.username)}">${escapeHtml(u.username)}</option>`).join('');
+}
+document.querySelectorAll('.company-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.company-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    loginCompany = btn.dataset.company;
+    refreshLoginUsers();
+    document.getElementById('loginError').textContent = '';
+  });
+});
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginPwd').addEventListener('keypress', e => { if(e.key==='Enter') tryLogin(); });
+document.getElementById('lordBtn').addEventListener('click', ()=>{
+  const pwd = prompt('請輸入主公密碼：');
+  if(pwd === null) return;
+  if(pwd === LORD_USER.password){
+    session = { company:'feelingbar', username:LORD_USER.username, role:'lord', isLord:true };
+    currentCompany = 'feelingbar';
+    enterApp();
+  } else {
+    showToast('主公密碼有誤','error');
+  }
+});
+function tryLogin(){
+  const username = document.getElementById('loginUser').value;
+  const pwd = document.getElementById('loginPwd').value;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  const list = DB.accounts[loginCompany] || [];
+  const u = list.find(x => x.username === username);
+  if(!u){ err.textContent = '找不到此使用者'; return; }
+  if(!u.password){ err.textContent = '此帳號尚未設定密碼，請聯繫主公'; return; }
+  if(String(u.password) !== String(pwd)){ err.textContent = '密碼錯誤'; return; }
+  session = { company:loginCompany, username:u.username, role:u.role, isLord:false };
+  currentCompany = loginCompany;
+  enterApp();
+}
+
+//=========================================================================
+// App Shell
+//=========================================================================
+function enterApp(){
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  document.getElementById('topUser').textContent = session.username + (session.isLord?' （主公）':'') + '・' + roleLabel(session.role);
+  renderTopCompany();
+  renderSideNav();
+  go('kanban');
+}
+function roleLabel(r){
+  return ({ lord:'主公', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
+}
+function renderTopCompany(){
+  const el = document.getElementById('topCompany');
+  if(session.isLord){
+    el.innerHTML = `<select id="lordCompanySwitch" style="background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:5px;color:white;padding:2px 6px;font-size:12px;">
+      ${Object.entries(COMPANY_LABEL).map(([k,v])=>`<option value="${k}" ${currentCompany===k?'selected':''}>${v}</option>`).join('')}
+    </select>`;
+    document.getElementById('lordCompanySwitch').addEventListener('change', e=>{
+      currentCompany = e.target.value;
+      renderSideNav();
+      go(currentPage);
+    });
+  } else {
+    el.textContent = COMPANY_LABEL[currentCompany];
+  }
+}
+function renderSideNav(){
+  const items = [
+    { key:'kanban',  icon:'📋', label:'任務看板' },
+    { key:'report',  icon:'📝', label:'週報 / 一對一' },
+    { key:'pdca',    icon:'📊', label:'PDCA 儀表' },
+  ];
+  if(session.isLord || session.role==='admin'){
+    items.push({ key:'people', icon:'👥', label:'帳號管理' });
+  }
+  if(session.isLord){
+    items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表（主公）' });
+  }
+  document.getElementById('sidenav').innerHTML = items.map(it =>
+    `<button class="sidenav-item ${currentPage===it.key?'active':''}" data-go="${it.key}"><span class="icon">${it.icon}</span>${it.label}</button>`
+  ).join('');
+  document.querySelectorAll('.sidenav-item').forEach(b=>{
+    b.addEventListener('click', ()=>go(b.dataset.go));
+  });
+}
+function go(page){
+  currentPage = page;
+  document.querySelectorAll('.sidenav-item').forEach(b=>{
+    b.classList.toggle('active', b.dataset.go===page);
+  });
+  const m = document.getElementById('main');
+  m.scrollTop = 0;
+  ({
+    kanban: renderKanban,
+    report: renderReport,
+    pdca:   renderPdca,
+    people: renderPeople,
+    ogsm:   renderOgsm,
+  }[page] || renderKanban)(m);
+}
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  if(!confirm('確定登出？')) return;
+  session = null;
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login').style.display = '';
+  document.getElementById('loginPwd').value = '';
+});
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `commander_room_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('已匯出 JSON 備份','success');
+});
+document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!confirm('確定要匯入並覆蓋目前所有資料嗎？建議先匯出備份。')) return;
+      DB = migrate(data); saveDB(); go(currentPage);
+      showToast('匯入完成','success');
+    }catch(err){ showToast('匯入失敗：'+err.message,'error'); }
+  };
+  r.readAsText(f);
+});
+
+//=========================================================================
+// Kanban — 任務卡看板（PDCA 五欄）
+//=========================================================================
+function renderKanban(m){
+  const tasks = DB.tasks[currentCompany] || [];
+  const myView = (session.isLord || session.role==='admin' || session.role==='manager');
+
+  const filtered = myView ? tasks : tasks.filter(t => t.assignee === session.username || t.creator === session.username);
+  const grouped = { plan:[], do:[], check:[], done:[], hold:[] };
+  filtered.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
+  Object.keys(grouped).forEach(k => grouped[k].sort((a,b)=>(b.priority==='high')-(a.priority==='high') || (a.deadline||'').localeCompare(b.deadline||'')));
+
+  const canCreate = (session.isLord || ['admin','manager'].includes(session.role));
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">任務看板</h2>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司視角':'我的任務'} ・ 共 ${filtered.length} 件</p>
+      <div class="page-actions">
+        ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
+        <button class="btn btn-ghost" onclick="go('kanban')">🔄 重新整理</button>
+      </div>
+    </div>
+
+    <details class="help-block">
+      <summary>💡 任務卡使用說明（軍師心法）</summary>
+      <div style="margin-top:6px;line-height:1.7;">
+        每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。其中「為什麼」與「紅線」是最常被省略卻最重要的——沒有它，下屬只能死板照做或不敢決定。<br>
+        狀態流轉（PDCA）：📋 計畫 Plan → 🚀 執行 Do → 🔍 檢視 Check → ✅ 完成 Act。卡關時可暫放 ⛔ Hold 並寫明阻塞原因。
+      </div>
+    </details>
+
+    <div class="kanban">
+      ${['plan','do','check','done','hold'].map(s => `
+        <div class="kanban-col" data-status="${s}">
+          <div class="kanban-col-head">
+            <span>${STATUS[s].label}</span>
+            <span class="kanban-col-count">${grouped[s].length}</span>
+          </div>
+          ${grouped[s].length===0
+            ? `<div class="empty-state" style="padding:24px 8px;font-size:11.5px;">無任務</div>`
+            : grouped[s].map(t => taskCard(t)).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+  m.querySelectorAll('.task-card').forEach(c=>{
+    c.addEventListener('click', ()=>openTaskModal(c.dataset.id));
+  });
+}
+function taskCard(t){
+  const today = new Date().toISOString().slice(0,10);
+  const overdue = t.deadline && t.deadline < today && t.status !== 'done';
+  return `
+    <div class="task-card" data-id="${t.id}" data-priority="${t.priority||'med'}">
+      <div class="task-title">${escapeHtml(t.title)}</div>
+      <div class="task-meta">
+        <span class="task-tag auth-${t.authLevel||'L2'}">${(AUTH[t.authLevel]||AUTH.L2).split(' ')[0]}${t.authLevel||'L2'}</span>
+        <span class="task-tag">→${escapeHtml(t.assignee||'未指派')}</span>
+        ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}</span>`:''}
+      </div>
+    </div>
+  `;
+}
+
+function openTaskModal(id){
+  const tasks = DB.tasks[currentCompany];
+  const t = id ? tasks.find(x=>x.id===id) : null;
+  const isNew = !t;
+  const data = t || { id:uid(), title:'', why:'', doneLook:'', redLines:'', deadline:'', midCheck:'', assignee:session.username, creator:session.username, priority:'med', authLevel:'L2', status:'plan', createdAt:new Date().toISOString(), notes:[] };
+  const userList = (DB.accounts[currentCompany]||[]).map(u=>u.username);
+  const canDelete = (session.isLord || session.username===data.creator || session.role==='admin');
+  const canEdit = (session.isLord || ['admin','manager'].includes(session.role) || session.username===data.creator || session.username===data.assignee);
+
+  showModal({
+    title: isNew?'新建任務卡':'任務卡詳情',
+    body: `
+      <div class="field">
+        <label class="field-label">① 任務名稱 <span class="req">*</span></label>
+        <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="動詞開頭，一句話講清楚要做什麼">
+      </div>
+      <div class="field">
+        <label class="field-label">② 為什麼（這件事服務的更大目標）</label>
+        <textarea class="field-textarea" id="f-why" placeholder="讓接手者知道方向，遇到變化能自己取捨">${escapeHtml(data.why)}</textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">③ 完成長什麼樣子（可驗收）</label>
+        <textarea class="field-textarea" id="f-done" placeholder="可拍照、可數字、可勾選的具體樣貌">${escapeHtml(data.doneLook)}</textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">④ 紅線（不能跨過的底線）</label>
+        <textarea class="field-textarea" id="f-red" placeholder="預算、時程、品質、品牌、合作關係…">${escapeHtml(data.redLines)}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">⑤ 截止日</label>
+          <input class="field-input" type="date" id="f-deadline" value="${data.deadline||''}">
+        </div>
+        <div class="field">
+          <label class="field-label">中段檢視點</label>
+          <input class="field-input" type="date" id="f-mid" value="${data.midCheck||''}">
+        </div>
+      </div>
+      <div class="field-row-3">
+        <div class="field">
+          <label class="field-label">指派給</label>
+          <select class="field-select" id="f-assignee">
+            ${userList.map(u=>`<option value="${escapeHtml(u)}" ${data.assignee===u?'selected':''}>${escapeHtml(u)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">優先級</label>
+          <select class="field-select" id="f-priority">
+            ${Object.entries(PRIORITY).map(([k,v])=>`<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">授權等級</label>
+          <select class="field-select" id="f-auth">
+            ${Object.entries(AUTH).map(([k,v])=>`<option value="${k}" ${data.authLevel===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">狀態（PDCA）</label>
+        <select class="field-select" id="f-status">
+          ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${data.status===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+      ${data.notes && data.notes.length ? `
+      <div class="field">
+        <label class="field-label">進度紀錄</label>
+        <div style="background:var(--gray-50);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gray-700);max-height:140px;overflow-y:auto;">
+          ${data.notes.map(n=>`<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${n.at.slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
+        </div>
+      </div>` : ''}
+      <div class="field">
+        <label class="field-label">新增進度／回報（可留空）</label>
+        <textarea class="field-textarea" id="f-newnote" placeholder="例：今日已聯繫供應商 X，等明日報價。"></textarea>
+      </div>
+      <p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${data.createdAt.slice(0,16).replace('T',' ')}</p>
+    `,
+    foot: `
+      ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
+      <span style="flex:1;"></span>
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      ${canEdit ? `<button class="btn btn-primary" onclick="saveTask('${data.id}', ${isNew?'true':'false'})">${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
+    `,
+  });
+}
+function saveTask(id, isNew){
+  const get = sel => document.getElementById(sel).value.trim();
+  const title = get('f-title');
+  if(!title){ showToast('任務名稱必填','error'); return; }
+  const newNote = get('f-newnote');
+  const tasks = DB.tasks[currentCompany];
+  let t = tasks.find(x=>x.id===id);
+  if(!t){
+    t = { id, createdAt:new Date().toISOString(), creator:session.username, notes:[] };
+    tasks.push(t);
+  }
+  Object.assign(t, {
+    title,
+    why:        get('f-why'),
+    doneLook:   get('f-done'),
+    redLines:   get('f-red'),
+    deadline:   get('f-deadline'),
+    midCheck:   get('f-mid'),
+    assignee:   get('f-assignee'),
+    priority:   get('f-priority'),
+    authLevel:  get('f-auth'),
+    status:     get('f-status'),
+  });
+  if(t.status==='done' && !t.completedAt) t.completedAt = new Date().toISOString();
+  if(t.status!=='done') t.completedAt = null;
+  if(newNote){
+    t.notes = t.notes || [];
+    t.notes.push({ at:new Date().toISOString(), by:session.username, text:newNote });
+  }
+  saveDB(); closeModal(); go('kanban');
+  showToast(isNew?'已建立任務':'已儲存','success');
+}
+function deleteTask(id){
+  if(!confirm('確定刪除此任務？無法復原。')) return;
+  DB.tasks[currentCompany] = DB.tasks[currentCompany].filter(x=>x.id!==id);
+  saveDB(); closeModal(); go('kanban');
+  showToast('已刪除','warn');
+}
+
+//=========================================================================
+// Weekly Report — 週報 + 一對一整合 + 未完成追蹤
+//=========================================================================
+function renderReport(m){
+  const myReports = (DB.reports[currentCompany]||[]).filter(r => r.username === session.username || session.isLord || session.role==='admin');
+  const myTasks = (DB.tasks[currentCompany]||[]).filter(t => t.assignee === session.username);
+  const blockedOrInProgress = myTasks.filter(t => ['do','hold'].includes(t.status));
+  const overdue = myTasks.filter(t => t.deadline && t.deadline < new Date().toISOString().slice(0,10) && t.status!=='done');
+  const wk = currentWeekId();
+  const existing = (DB.reports[currentCompany]||[]).find(r => r.username===session.username && r.weekId===wk);
+
+  const isOneOnOneWeek = isEvenWeek(wk);  // 雙週一對一
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">本週週報</h2>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${session.username} ・ 週次 ${wk}</p>
+    </div>
+
+    <details class="help-block">
+      <summary>💡 軍師提醒：週報 = 5 分鐘可填、1 分鐘可看</summary>
+      <div style="margin-top:6px;line-height:1.7;">
+        寫長等於沒寫——主公不會看。<br>
+        ① 完成（≤3 件，動詞開頭，帶數字） ② 卡關／風險（需要協助請具體寫） ③ 下週重點（≤3 件，對齊北極星） ④ 我自己決定的事（L1/L2 內主動做的，練判斷力） ⑤ 心情（這欄是組織溫度雷達）<br>
+        ${isOneOnOneWeek?'<b style="color:var(--primary);">本週是雙週一對一週次</b>，請於最下方額外回答三大問。':'本週<b>非</b>一對一週次，下週為一對一週。'}
+      </div>
+    </details>
+
+    ${blockedOrInProgress.length || overdue.length ? `
+      <div class="related-tasks">
+        <div class="related-tasks-title">📌 自動帶入：你目前未完成的任務</div>
+        ${overdue.length?`<div style="color:var(--accent);">⚠️ 已逾期 ${overdue.length} 件：${overdue.map(t=>escapeHtml(t.title)).join('・')}</div>`:''}
+        ${blockedOrInProgress.length?`<div>🚀 進行中／卡關共 ${blockedOrInProgress.length} 件：${blockedOrInProgress.map(t=>`${escapeHtml(t.title)}（${STATUS[t.status].label.split(' ')[0]}）`).join('・')}</div>`:''}
+      </div>
+    ` : ''}
+
+    <div class="report-card">
+      ${reportField('done',  '①','本週完成（≤3 件）', existing?.done||'',          'var(--green)','例：完成母親節活動素材 5 張、IG 觸及 ＋12%')}
+      ${reportField('block', '②','卡關／風險', existing?.blocking||'',              'var(--accent)','需要主公幫忙的具體寫出來；無則寫「無」')}
+      ${reportField('next',  '③','下週重點（≤3 件）', existing?.nextWeek||'',       'var(--primary)','對齊本週軍令的北極星')}
+      ${reportField('decide','④','我自己決定的事（L1/L2）', existing?.ownDecisions||'','var(--yellow)','列出來，培養做決定的肌肉')}
+      ${reportField('mood',  '⑤','一句話心情', existing?.mood||'',                  'var(--gray-500)','這週累不累？哪裡有成就感？哪裡被卡？','input')}
+
+      ${isOneOnOneWeek ? `
+        <div style="margin-top:24px;padding-top:20px;border-top:2px dashed var(--primary);">
+          <h3 style="margin:0 0 4px;color:var(--primary);font-size:15px;">🤝 雙週一對一三大問</h3>
+          <p style="font-size:11px;color:var(--gray-500);margin:0 0 14px;">先用文字回答，下次一對一面談時主公會逐題與您對話</p>
+          <div class="field">
+            <label class="field-label">Q1. 這兩週你最自豪的判斷是什麼？為什麼？</label>
+            <textarea class="field-textarea" id="r-q1">${escapeHtml(existing?.oneOnOne?.proudJudgment||'')}</textarea>
+          </div>
+          <div class="field">
+            <label class="field-label">Q2. 哪個決定你最不確定？如果再來一次會怎麼做？</label>
+            <textarea class="field-textarea" id="r-q2">${escapeHtml(existing?.oneOnOne?.uncertainDecision||'')}</textarea>
+          </div>
+          <div class="field">
+            <label class="field-label">Q3. 下兩週你預計會遇到什麼判斷題？想先聽聽主公的視角嗎？</label>
+            <textarea class="field-textarea" id="r-q3">${escapeHtml(existing?.oneOnOne?.upcomingJudgments||'')}</textarea>
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
+        <button class="btn btn-ghost" onclick="go('report')">放棄變更</button>
+        <button class="btn btn-primary" onclick="saveReport(${isOneOnOneWeek})">儲存週報</button>
+      </div>
+    </div>
+
+    <h3 style="margin:24px 0 10px;font-size:15px;color:var(--gray-700);">📚 歷史週報（最近 8 週）</h3>
+    ${(myReports.slice().sort((a,b)=>b.weekId.localeCompare(a.weekId)).slice(0,8)).map(r => `
+      <div class="report-card" style="padding:14px 18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <strong>${r.weekId} ・ ${escapeHtml(r.username)}</strong>
+          <span style="font-size:11px;color:var(--gray-400);">${(r.createdAt||'').slice(0,16).replace('T',' ')}</span>
+        </div>
+        ${r.done?`<div style="font-size:12.5px;"><b style="color:var(--green);">✅ 完成：</b>${escapeHtml(r.done)}</div>`:''}
+        ${r.blocking?`<div style="font-size:12.5px;"><b style="color:var(--accent);">⚠️ 卡關：</b>${escapeHtml(r.blocking)}</div>`:''}
+        ${r.nextWeek?`<div style="font-size:12.5px;"><b style="color:var(--primary);">▶ 下週：</b>${escapeHtml(r.nextWeek)}</div>`:''}
+        ${r.mood?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px;"><i>"${escapeHtml(r.mood)}"</i></div>`:''}
+      </div>
+    `).join('') || `<div class="empty-state">尚無歷史週報</div>`}
+  `;
+}
+function reportField(id, num, label, val, color, hint, type='area'){
+  return `
+    <div class="report-section">
+      <div class="report-section-head">
+        <span class="report-icon" style="background:${color};">${num}</span>
+        <span class="report-section-title">${label}</span>
+      </div>
+      ${type==='input'
+        ? `<input class="field-input" id="r-${id}" value="${escapeHtml(val)}" placeholder="${hint}">`
+        : `<textarea class="field-textarea" id="r-${id}" placeholder="${hint}">${escapeHtml(val)}</textarea>`}
+    </div>
+  `;
+}
+function saveReport(withOneOnOne){
+  const wk = currentWeekId();
+  const list = DB.reports[currentCompany];
+  let r = list.find(x => x.username===session.username && x.weekId===wk);
+  if(!r){ r = { id:uid(), weekId:wk, username:session.username, createdAt:new Date().toISOString() }; list.push(r); }
+  r.done       = document.getElementById('r-done').value.trim();
+  r.blocking   = document.getElementById('r-block').value.trim();
+  r.nextWeek   = document.getElementById('r-next').value.trim();
+  r.ownDecisions = document.getElementById('r-decide').value.trim();
+  r.mood       = document.getElementById('r-mood').value.trim();
+  if(withOneOnOne){
+    r.oneOnOne = {
+      proudJudgment:     document.getElementById('r-q1').value.trim(),
+      uncertainDecision: document.getElementById('r-q2').value.trim(),
+      upcomingJudgments: document.getElementById('r-q3').value.trim(),
+    };
+  }
+  saveDB(); showToast('週報已儲存','success'); go('report');
+}
+
+//=========================================================================
+// PDCA Dashboard
+//=========================================================================
+function renderPdca(m){
+  const tasks = (DB.tasks[currentCompany]||[]);
+  const myView = (session.isLord || ['admin','manager'].includes(session.role));
+  const scope = myView ? tasks : tasks.filter(t => t.assignee===session.username);
+  const today = new Date().toISOString().slice(0,10);
+  const counts = {plan:0,do:0,check:0,done:0,hold:0};
+  scope.forEach(t => counts[t.status]=(counts[t.status]||0)+1);
+  const total = scope.length;
+  const overdue = scope.filter(t => t.deadline && t.deadline < today && t.status!=='done').length;
+  const completionRate = total ? Math.round(counts.done / total * 100) : 0;
+  const avgCycle = avgCycleDays(scope);
+
+  // PDCA per-assignee 分布
+  const byAssignee = {};
+  scope.forEach(t => {
+    if(!byAssignee[t.assignee]) byAssignee[t.assignee] = {plan:0,do:0,check:0,done:0,hold:0,total:0};
+    byAssignee[t.assignee][t.status]++;
+    byAssignee[t.assignee].total++;
+  });
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">PDCA 監控儀表</h2>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司':'我的'} ・ 共 ${total} 件任務</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card plan"><div class="stat-label">📋 Plan 計畫</div><div class="stat-value">${counts.plan}</div><div class="stat-sub">尚未啟動</div></div>
+      <div class="stat-card do"><div class="stat-label">🚀 Do 執行</div><div class="stat-value">${counts.do}</div><div class="stat-sub">進行中</div></div>
+      <div class="stat-card check"><div class="stat-label">🔍 Check 檢視</div><div class="stat-value">${counts.check}</div><div class="stat-sub">待驗收</div></div>
+      <div class="stat-card done"><div class="stat-label">✅ Act 完成</div><div class="stat-value">${counts.done}</div><div class="stat-sub">完成率 ${completionRate}%</div></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card" style="border-top:3px solid var(--accent);"><div class="stat-label">⛔ Hold 卡關</div><div class="stat-value" style="color:${counts.hold>0?'var(--accent)':''}">${counts.hold}</div><div class="stat-sub">需主公介入</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent);"><div class="stat-label">⏰ 已逾期</div><div class="stat-value" style="color:${overdue>0?'var(--accent)':''}">${overdue}</div><div class="stat-sub">${overdue>0?'需立即處理':'良好'}</div></div>
+      <div class="stat-card"><div class="stat-label">⏱ 平均週期</div><div class="stat-value">${avgCycle}<span style="font-size:14px;color:var(--gray-500);"> 天</span></div><div class="stat-sub">建立→完成</div></div>
+      <div class="stat-card"><div class="stat-label">📈 完成率</div><div class="stat-value">${completionRate}<span style="font-size:14px;color:var(--gray-500);">%</span></div><div class="stat-sub">已完成 / 總數</div></div>
+    </div>
+
+    <div class="pdca-flow">
+      <h3>👥 各成員 PDCA 分布${myView?'':'（僅我的）'}</h3>
+      ${Object.keys(byAssignee).length===0 ? `<div class="empty-state">尚無資料</div>` :
+      Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total).map(([who, c])=>{
+        const tot = c.total || 1;
+        return `
+          <div style="margin-bottom:12px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escapeHtml(who)} <span style="color:var(--gray-400);font-size:11px;font-weight:400;">共 ${c.total} 件</span></div>
+            <div class="bar-track" style="display:flex;">
+              <div style="background:var(--gray-400);width:${c.plan/tot*100}%;" title="Plan ${c.plan}"></div>
+              <div style="background:var(--primary);width:${c.do/tot*100}%;" title="Do ${c.do}"></div>
+              <div style="background:var(--yellow);width:${c.check/tot*100}%;" title="Check ${c.check}"></div>
+              <div style="background:var(--green);width:${c.done/tot*100}%;" title="Done ${c.done}"></div>
+              <div style="background:var(--accent);width:${c.hold/tot*100}%;" title="Hold ${c.hold}"></div>
+            </div>
+            <div style="font-size:11px;color:var(--gray-500);margin-top:3px;">📋${c.plan} 🚀${c.do} 🔍${c.check} ✅${c.done} ⛔${c.hold}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+//=========================================================================
+// People — 帳號管理
+//=========================================================================
+function renderPeople(m){
+  const company = currentCompany;
+  const list = DB.accounts[company] || [];
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">帳號管理</h2>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ 共 ${list.length} 位</p>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openUserEdit('${company}')">+ 新增使用者</button>
+      </div>
+    </div>
+    <div style="background:white;border-radius:10px;box-shadow:var(--shadow-sm);overflow:hidden;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 90px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
+        <div>使用者</div><div>密碼</div><div>角色</div><div>操作</div>
+      </div>
+      ${list.map((u,idx)=>`
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 90px;padding:10px 14px;border-top:1px solid var(--gray-100);font-size:13px;align-items:center;">
+          <div><b>${escapeHtml(u.username)}</b></div>
+          <div style="font-family:monospace;color:${u.password?'var(--gray-700)':'var(--accent)'};">${u.password?'••••••':'(未設定)'}</div>
+          <div>${roleLabel(u.role)}</div>
+          <div><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="openUserEdit('${company}',${idx})">編輯</button></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+function openUserEdit(company, idx){
+  const u = idx!==undefined ? DB.accounts[company][idx] : { username:'', password:'', role:'staff' };
+  showModal({
+    title: idx!==undefined ? '編輯使用者' : '新增使用者',
+    body: `
+      <div class="field">
+        <label class="field-label">使用者名稱 <span class="req">*</span></label>
+        <input class="field-input" id="u-name" value="${escapeHtml(u.username)}">
+      </div>
+      <div class="field">
+        <label class="field-label">密碼</label>
+        <input class="field-input" id="u-pwd" value="${escapeHtml(u.password||'')}" placeholder="留空表示未設定，無法登入">
+      </div>
+      <div class="field">
+        <label class="field-label">角色</label>
+        <select class="field-select" id="u-role">
+          <option value="admin"   ${u.role==='admin'?'selected':''}>admin（管理者）</option>
+          <option value="manager" ${u.role==='manager'?'selected':''}>manager（店長／主管）</option>
+          <option value="staff"   ${u.role==='staff'?'selected':''}>staff（成員）</option>
+        </select>
+      </div>
+    `,
+    foot: `
+      ${idx!==undefined ? `<button class="btn btn-danger" onclick="deleteUser('${company}',${idx})">刪除</button>` : ''}
+      <span style="flex:1;"></span>
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveUser('${company}',${idx===undefined?-1:idx})">儲存</button>
+    `,
+  });
+}
+function saveUser(company, idx){
+  const name = document.getElementById('u-name').value.trim();
+  const pwd  = document.getElementById('u-pwd').value.trim();
+  const role = document.getElementById('u-role').value;
+  if(!name){ showToast('使用者名稱必填','error'); return; }
+  const list = DB.accounts[company];
+  if(idx>=0){
+    list[idx] = { username:name, password:pwd, role };
+  } else {
+    if(list.find(u => u.username===name)){ showToast('使用者已存在','error'); return; }
+    list.push({ username:name, password:pwd, role });
+  }
+  saveDB(); closeModal(); go('people');
+  showToast('已儲存','success');
+}
+function deleteUser(company, idx){
+  if(!confirm('確定刪除此使用者？')) return;
+  DB.accounts[company].splice(idx,1);
+  saveDB(); closeModal(); go('people');
+  showToast('已刪除','warn');
+}
+
+//=========================================================================
+// OGSM — 主公專屬戰略表
+//=========================================================================
+function renderOgsm(m){
+  if(!session.isLord){
+    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>OGSM 戰略表為主公專屬</div>`;
+    return;
+  }
+  const company = currentCompany;
+  const o = DB.ogsm[company] || emptyOgsm();
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">OGSM 戰略表</h2>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ 主公限定 ・ 最後更新 ${o.lastUpdated?o.lastUpdated.slice(0,16).replace('T',' '):'尚未更新'}</p>
+    </div>
+
+    <details class="help-block">
+      <summary>💡 OGSM = Objective × Goals × Strategies × Measures</summary>
+      <div style="margin-top:6px;line-height:1.7;">
+        <b>O 目的</b>：質化的長期方向（一句話，給人方向感）<br>
+        <b>G 目標</b>：量化目標 = 北極星指標 + 二級指標（≤3 個）<br>
+        <b>S 策略</b>：達成目標的「打法」（≤5 個，每個是一條路徑）<br>
+        <b>M 衡量</b>：每條策略的具體可衡量產出（公式 + 進度）
+      </div>
+    </details>
+
+    <div class="ogsm-grid">
+      <div class="ogsm-block">
+        <h3><span class="letter">O</span>Objective 目的（質化方向）</h3>
+        <textarea class="field-textarea" id="o-obj" placeholder="一句話，本年／本季的核心方向。例：讓 Feeling Bar 在士林微醺市場成為「下班後第一個想到的地方」。">${escapeHtml(o.objective)}</textarea>
+      </div>
+
+      <div class="ogsm-block" style="border-left-color:var(--green);">
+        <h3 style="color:var(--green);"><span class="letter" style="background:var(--green);">G</span>Goals 量化目標</h3>
+        <div class="ogsm-row head"><div>目標名稱</div><div>現值</div><div>目標</div><div>截止</div></div>
+        <div id="o-goals">${(o.goals||[]).map((g,i)=>ogsmGoalRow(g,i)).join('')}</div>
+        <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('goals')">+ 新增目標</button>
+      </div>
+
+      <div class="ogsm-block" style="border-left-color:var(--yellow);">
+        <h3 style="color:var(--yellow);"><span class="letter" style="background:var(--yellow);">S</span>Strategies 策略（打法）</h3>
+        <div class="ogsm-row head"><div>策略名稱</div><div colspan="2">說明</div><div>負責人</div></div>
+        <div id="o-strategies">${(o.strategies||[]).map((s,i)=>ogsmStrategyRow(s,i)).join('')}</div>
+        <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('strategies')">+ 新增策略</button>
+      </div>
+
+      <div class="ogsm-block" style="border-left-color:var(--accent);">
+        <h3 style="color:var(--accent);"><span class="letter" style="background:var(--accent);">M</span>Measures 衡量指標</h3>
+        <div class="ogsm-row head"><div>指標</div><div>現值</div><div>目標</div><div>截止 / 負責</div></div>
+        <div id="o-measures">${(o.measures||[]).map((m,i)=>ogsmMeasureRow(m,i)).join('')}</div>
+        <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('measures')">+ 新增指標</button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-primary" onclick="saveOgsm()">儲存 OGSM</button>
+      </div>
+    </div>
+  `;
+}
+function ogsmGoalRow(g={}, i){
+  return `
+    <div class="ogsm-row">
+      <input class="field-input" data-k="name"     value="${escapeHtml(g.name||'')}"     placeholder="例：週營收">
+      <input class="field-input" data-k="current"  value="${escapeHtml(g.current||'')}"  placeholder="現值">
+      <input class="field-input" data-k="target"   value="${escapeHtml(g.target||'')}"   placeholder="目標">
+      <input class="field-input" data-k="deadline" value="${escapeHtml(g.deadline||'')}" type="date">
+    </div>`;
+}
+function ogsmStrategyRow(s={}, i){
+  return `
+    <div class="ogsm-row" style="grid-template-columns:1fr 2fr 110px;">
+      <input class="field-input" data-k="name"        value="${escapeHtml(s.name||'')}"        placeholder="例：晚間外送社團團購">
+      <input class="field-input" data-k="description" value="${escapeHtml(s.description||'')}" placeholder="一句話說明做法">
+      <input class="field-input" data-k="owner"       value="${escapeHtml(s.owner||'')}"       placeholder="負責人">
+    </div>`;
+}
+function ogsmMeasureRow(m={}, i){
+  return `
+    <div class="ogsm-row">
+      <input class="field-input" data-k="name"     value="${escapeHtml(m.name||'')}"     placeholder="例：團購社團每週發文 ≥3">
+      <input class="field-input" data-k="current"  value="${escapeHtml(m.current||'')}"  placeholder="現值">
+      <input class="field-input" data-k="target"   value="${escapeHtml(m.target||'')}"   placeholder="目標">
+      <input class="field-input" data-k="owner"    value="${escapeHtml(m.owner||'')}"    placeholder="截止 / 負責人">
+    </div>`;
+}
+function ogsmAdd(section){
+  const el = document.getElementById('o-'+section);
+  const html = section==='goals' ? ogsmGoalRow({}, el.children.length)
+            : section==='strategies' ? ogsmStrategyRow({}, el.children.length)
+            : ogsmMeasureRow({}, el.children.length);
+  el.insertAdjacentHTML('beforeend', html);
+}
+function saveOgsm(){
+  const company = currentCompany;
+  const o = DB.ogsm[company] || emptyOgsm();
+  o.objective = document.getElementById('o-obj').value.trim();
+  o.goals      = readOgsmRows('o-goals',      ['name','current','target','deadline']);
+  o.strategies = readOgsmRows('o-strategies', ['name','description','owner']);
+  o.measures   = readOgsmRows('o-measures',   ['name','current','target','owner']);
+  o.lastUpdated = new Date().toISOString();
+  DB.ogsm[company] = o;
+  saveDB();
+  showToast('OGSM 已儲存','success');
+}
+function readOgsmRows(id, keys){
+  const rows = document.getElementById(id).children;
+  return Array.from(rows).map(row => {
+    const obj = {};
+    keys.forEach(k => {
+      const inp = row.querySelector(`[data-k="${k}"]`);
+      obj[k] = inp ? inp.value.trim() : '';
+    });
+    return obj;
+  }).filter(o => Object.values(o).some(v => v));
+}
+
+//=========================================================================
+// Modal & Toast
+//=========================================================================
+function showModal({title, body, foot}){
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalFoot').innerHTML = foot;
+  document.getElementById('modalMask').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalMask').classList.remove('show'); }
+document.getElementById('modalMask').addEventListener('click', e => {
+  if(e.target.id==='modalMask') closeModal();
+});
+function showToast(msg, type=''){
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.getElementById('toastStack').appendChild(t);
+  setTimeout(()=>t.remove(), 2800);
+}
+
+//=========================================================================
+// Helpers
+//=========================================================================
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+}
+function currentWeekId(d=new Date()){
+  // ISO 週次：YYYY-Www
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  const wk = Math.ceil(((dt - yearStart)/86400000 + 1)/7);
+  return `${dt.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
+}
+function isEvenWeek(weekId){
+  const wk = parseInt(weekId.split('W')[1] || '0', 10);
+  return wk % 2 === 0;
+}
+function avgCycleDays(tasks){
+  const completed = tasks.filter(t => t.status==='done' && t.createdAt && t.completedAt);
+  if(!completed.length) return '–';
+  const days = completed.reduce((sum,t) => sum + (new Date(t.completedAt) - new Date(t.createdAt))/86400000, 0) / completed.length;
+  return days.toFixed(1);
+}
+
+//=========================================================================
+// Boot
+//=========================================================================
+saveDB();  // 確保檔案存在
+refreshLoginUsers();
+</script>
+</body>
+</html>
