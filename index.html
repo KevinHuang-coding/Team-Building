@@ -201,6 +201,13 @@
   details.help-block[open] summary{margin-bottom:8px;}
 
   .conn-banner{background:var(--yellow-light);border-bottom:1px solid var(--yellow);padding:6px 14px;font-size:12px;color:var(--gray-700);text-align:center;}
+
+  /* ===== Password input with eye toggle ===== */
+  .pwd-wrap{position:relative;}
+  .pwd-wrap input{padding-right:42px!important;}
+  .pwd-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;padding:6px 8px;line-height:1;}
+  .pwd-eye:hover{color:var(--primary);}
+  .pwd-eye:focus{outline:none;color:var(--primary);}
 </style>
 </head>
 <body>
@@ -241,7 +248,10 @@
 
     <div class="form-group">
       <label class="form-label">密碼</label>
-      <input class="form-input" type="password" id="loginPwd" placeholder="輸入密碼" autocomplete="off">
+      <div class="pwd-wrap">
+        <input class="form-input" type="password" id="loginPwd" placeholder="輸入密碼" autocomplete="off">
+        <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+      </div>
     </div>
 
     <button class="login-btn" id="loginBtn">登入</button>
@@ -1049,7 +1059,10 @@ function openUserEdit(company, payload) {
       </div>
       <div class="field">
         <label class="field-label">密碼（留空＝${isNew?'未設定':'保留原密碼'}）</label>
-        <input class="field-input" id="u-pwd" placeholder="${isNew?'建議 4-6 位數字':'留空保留原密碼'}">
+        <div class="pwd-wrap">
+          <input class="field-input" type="password" id="u-pwd" placeholder="${isNew?'建議 4-6 位數字':'留空保留原密碼'}">
+          <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+        </div>
       </div>
       <div class="field">
         <label class="field-label">角色</label>
@@ -1095,6 +1108,16 @@ async function saveUser(company, originalUsername) {
     showToast(e.message,'error');
   }
 }
+// 通用：切換 input[type=password] 的明暗顯示
+function togglePwdInput(btn) {
+  const wrap = btn.closest('.pwd-wrap');
+  if (!wrap) return;
+  const inp = wrap.querySelector('input');
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; btn.title = '隱藏密碼'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; btn.title = '顯示密碼'; }
+}
+
 function togglePwdAll(btn) {
   const cells = document.querySelectorAll('.pwd-cell');
   if (!cells.length) return;
@@ -1258,15 +1281,24 @@ function renderProfile(m) {
         <h3 style="margin:0 0 12px;font-size:15px;">🔐 修改密碼</h3>
         <div class="field">
           <label class="field-label">舊密碼</label>
-          <input class="field-input" type="password" id="p-old">
+          <div class="pwd-wrap">
+            <input class="field-input" type="password" id="p-old">
+            <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+          </div>
         </div>
         <div class="field">
           <label class="field-label">新密碼（至少 4 碼）</label>
-          <input class="field-input" type="password" id="p-new">
+          <div class="pwd-wrap">
+            <input class="field-input" type="password" id="p-new">
+            <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+          </div>
         </div>
         <div class="field">
           <label class="field-label">再次輸入新密碼</label>
-          <input class="field-input" type="password" id="p-new2">
+          <div class="pwd-wrap">
+            <input class="field-input" type="password" id="p-new2">
+            <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;">
           <button class="btn btn-primary" onclick="changeMyPassword()">變更密碼</button>
