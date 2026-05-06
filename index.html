@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>主公作戰指揮室</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F4E79'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3E主%3C/text%3E%3C/svg%3E">
+<title>Kevin's Team Building</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F4E79'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EK%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
   :root{
     --primary:#1F4E79; --primary-dark:#0F3454; --primary-light:#D9E2F3;
@@ -24,30 +25,38 @@
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit;}
   input,textarea,select{font-family:inherit;font-size:14px;}
   textarea{resize:vertical;min-height:60px;}
-  a{color:var(--primary);text-decoration:none;}
   .hidden{display:none!important;}
 
-  /* ===== Login ===== */
-  #login{min-height:100vh;background:linear-gradient(135deg,#1F4E79 0%,#0F3454 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
-  .login-card{background:white;border-radius:16px;padding:32px 28px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);}
-  .login-title{text-align:center;margin:0 0 4px;color:var(--primary);font-size:22px;font-weight:800;letter-spacing:.05em;}
-  .login-sub{text-align:center;color:var(--gray-500);font-size:12px;margin-bottom:24px;}
+  /* ===== 全域載入 ===== */
+  #globalLoading{position:fixed;inset:0;background:rgba(255,255,255,.7);display:none;align-items:center;justify-content:center;z-index:1000;}
+  #globalLoading.show{display:flex;}
+  .spinner{width:36px;height:36px;border:3px solid var(--gray-200);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ===== Setup / Login 共用容器 ===== */
+  .center-wrap{min-height:100vh;background:linear-gradient(135deg,#1F4E79 0%,#0F3454 100%);display:flex;align-items:center;justify-content:center;padding:20px;}
+  .center-card{background:white;border-radius:16px;padding:32px 28px;width:100%;max-width:460px;box-shadow:var(--shadow-lg);}
+  .center-title{text-align:center;margin:0 0 4px;color:var(--primary);font-size:22px;font-weight:800;letter-spacing:.05em;}
+  .center-sub{text-align:center;color:var(--gray-500);font-size:12px;margin-bottom:24px;}
+
   .company-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px;background:var(--gray-100);padding:4px;border-radius:10px;}
   .company-tab{padding:10px 8px;border-radius:7px;font-size:13px;font-weight:600;color:var(--gray-600);transition:all .2s;}
   .company-tab.active{background:white;color:var(--primary);box-shadow:var(--shadow-sm);}
   .form-group{margin-bottom:14px;}
   .form-label{display:block;font-size:12px;color:var(--gray-600);margin-bottom:6px;font-weight:600;}
-  .form-input,.form-select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:8px;background:white;transition:border-color .15s;}
+  .form-input,.form-select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:8px;background:white;}
   .form-input:focus,.form-select:focus{outline:none;border-color:var(--primary);}
   .login-btn{width:100%;padding:12px;background:var(--primary);color:white;border-radius:8px;font-weight:700;font-size:15px;margin-top:8px;transition:background .2s;}
   .login-btn:hover{background:var(--primary-dark);}
   .login-btn:disabled{background:var(--gray-300);cursor:not-allowed;}
-  .login-error{color:var(--accent);font-size:12px;text-align:center;margin-top:10px;min-height:14px;}
+  .err-msg{color:var(--accent);font-size:12px;text-align:center;margin-top:10px;min-height:14px;}
   .login-divider{display:flex;align-items:center;color:var(--gray-400);margin:18px 0;font-size:11px;}
   .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--gray-200);}
   .login-divider span{padding:0 10px;}
   .lord-btn{width:100%;padding:10px;background:#F4E5C5;color:#7C5C00;border:1.5px dashed #BF8F00;border-radius:8px;font-weight:700;font-size:13px;}
   .lord-btn:hover{background:#EFD9A8;}
+  .small-link{font-size:11px;color:var(--gray-400);display:block;text-align:center;margin-top:14px;cursor:pointer;}
+  .small-link:hover{color:var(--primary);}
 
   /* ===== App Shell ===== */
   #app{min-height:100vh;display:none;}
@@ -66,8 +75,6 @@
   .sidenav-item:hover{background:var(--gray-100);}
   .sidenav-item.active{background:var(--primary-light);color:var(--primary);}
   .sidenav-item .icon{width:20px;text-align:center;font-size:15px;}
-  .sidenav-divider{height:1px;background:var(--gray-200);margin:8px 4px;}
-  .sidenav-section{font-size:11px;color:var(--gray-400);font-weight:700;letter-spacing:.05em;padding:6px 12px;text-transform:uppercase;}
 
   .main{flex:1;padding:20px 24px;overflow-y:auto;max-width:100%;}
   .page-header{margin-bottom:20px;}
@@ -92,7 +99,6 @@
   .kanban-col[data-status="check"] .kanban-col-head{color:var(--yellow);}
   .kanban-col[data-status="done"] .kanban-col-head{color:var(--green);}
   .kanban-col[data-status="hold"] .kanban-col-head{color:var(--accent);}
-
   .task-card{background:white;border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
   .task-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
   .task-card[data-priority="high"]{border-left-color:var(--accent);}
@@ -130,7 +136,6 @@
 
   /* ===== Weekly Report ===== */
   .report-card{background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow-sm);margin-bottom:14px;}
-  .report-week-picker{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
   .report-section{margin-bottom:16px;}
   .report-section-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .report-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
@@ -151,8 +156,6 @@
   .ogsm-row{display:grid;grid-template-columns:1fr 90px 90px 110px;gap:8px;padding:8px 0;border-bottom:1px dashed var(--gray-200);align-items:center;font-size:12.5px;}
   .ogsm-row.head{font-weight:700;color:var(--gray-500);font-size:11px;border-bottom:2px solid var(--gray-300);}
   .ogsm-row:last-child{border-bottom:none;}
-  .ogsm-progress{height:6px;border-radius:3px;background:var(--gray-200);overflow:hidden;margin-top:3px;}
-  .ogsm-progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--primary));}
 
   /* ===== PDCA Dashboard ===== */
   .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
@@ -166,9 +169,7 @@
   .stat-card.done{border-top:3px solid var(--green);}
   .pdca-flow{background:white;border-radius:12px;padding:18px;box-shadow:var(--shadow-sm);}
   .pdca-flow h3{margin:0 0 12px;font-size:14px;color:var(--gray-700);}
-  .bar-row{display:grid;grid-template-columns:120px 1fr 60px;gap:10px;align-items:center;margin-bottom:6px;font-size:12px;}
-  .bar-track{height:14px;background:var(--gray-100);border-radius:7px;overflow:hidden;}
-  .bar-fill{height:100%;border-radius:7px;}
+  .bar-track{height:14px;background:var(--gray-100);border-radius:7px;overflow:hidden;display:flex;}
 
   /* ===== Toast ===== */
   .toast-stack{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:90vw;}
@@ -183,7 +184,6 @@
     .layout{flex-direction:column;}
     .sidenav{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--gray-200);padding:8px;gap:4px;flex-wrap:nowrap;}
     .sidenav-item{flex-shrink:0;padding:8px 12px;font-size:12.5px;}
-    .sidenav-divider,.sidenav-section{display:none;}
     .main{padding:14px;}
     .kanban{grid-template-columns:1fr;}
     .stat-grid{grid-template-columns:repeat(2,1fr);}
@@ -199,20 +199,39 @@
   details.help-block{background:var(--primary-light);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--gray-700);}
   details.help-block summary{cursor:pointer;font-weight:700;color:var(--primary);}
   details.help-block[open] summary{margin-bottom:8px;}
+
+  .conn-banner{background:var(--yellow-light);border-bottom:1px solid var(--yellow);padding:6px 14px;font-size:12px;color:var(--gray-700);text-align:center;}
 </style>
 </head>
 <body>
 
+<!-- ===== Setup Screen ===== -->
+<div id="setup" class="center-wrap hidden">
+  <div class="center-card">
+    <h1 class="center-title">Kevin's Team Building</h1>
+    <p class="center-sub">初始化 ・ 首次使用需設定後端 API 網址</p>
+
+    <div class="form-group">
+      <label class="form-label">Apps Script Web App URL</label>
+      <input class="form-input" type="text" id="setupUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+      <div class="field-hint" style="margin-top:6px;">由主公部署 Code.gs 後取得，請見《部署指引》。</div>
+    </div>
+
+    <button class="login-btn" id="setupBtn">測試連線並儲存</button>
+    <div class="err-msg" id="setupErr"></div>
+  </div>
+</div>
+
 <!-- ===== Login Screen ===== -->
-<div id="login">
-  <div class="login-card">
-    <h1 class="login-title">主公作戰指揮室</h1>
-    <p class="login-sub">Commander's War Room ・ v1.0</p>
+<div id="login" class="center-wrap hidden">
+  <div class="center-card">
+    <h1 class="center-title">Kevin's Team Building</h1>
+    <p class="center-sub">Three-Company Hub ・ v1.1 雲端版</p>
 
     <div class="company-tabs">
-      <button class="company-tab active" data-company="feelingbar">Feeling Bar</button>
-      <button class="company-tab" data-company="manwu">滿屋設計</button>
-      <button class="company-tab" data-company="nanpowan">凱文南坡萬</button>
+      <button class="company-tab active" data-company="fb">Feeling Bar</button>
+      <button class="company-tab" data-company="mw">滿屋設計</button>
+      <button class="company-tab" data-company="npw">凱文南坡萬</button>
     </div>
 
     <div class="form-group">
@@ -226,24 +245,23 @@
     </div>
 
     <button class="login-btn" id="loginBtn">登入</button>
-
-    <div class="login-error" id="loginError"></div>
+    <div class="err-msg" id="loginError"></div>
 
     <div class="login-divider"><span>OR</span></div>
-
     <button class="lord-btn" id="lordBtn">⚔️ 主公專屬登入（跨公司 + OGSM）</button>
+
+    <span class="small-link" id="reSetupLink">⚙️ 重設後端 API 網址</span>
   </div>
 </div>
 
 <!-- ===== App Shell ===== -->
 <div id="app">
   <div class="topbar">
-    <span class="topbar-brand">⚔️ 作戰指揮室</span>
+    <span class="topbar-brand">⚔️ Kevin's Team Building</span>
     <span class="topbar-company" id="topCompany"></span>
     <span class="topbar-spacer"></span>
     <span class="topbar-user" id="topUser"></span>
-    <button class="topbar-btn" id="exportBtn" title="匯出資料">⬇</button>
-    <button class="topbar-btn" id="importBtn" title="匯入資料">⬆</button>
+    <button class="topbar-btn" id="refreshBtn" title="重新整理資料">🔄</button>
     <button class="topbar-btn" id="logoutBtn">登出</button>
   </div>
 
@@ -266,58 +284,18 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-
-<input type="file" id="importFile" accept=".json" style="display:none">
+<div id="globalLoading"><div class="spinner"></div></div>
 
 <script>
 //=========================================================================
-// 主公作戰指揮室 ・ v1.0
-// 為 Kevin 主公量身打造 — 軍師奉上
-//
-// 【設定區】下面 ACCOUNTS_DEFAULT 是預設帳號清單。
-// 主公補完帳密後，可：
-//   (a) 直接編輯本檔案的 ACCOUNTS_DEFAULT 物件，或
-//   (b) 用主公帳號登入後在「公司管理」頁直接增刪改（推薦）
+// 主公作戰指揮室 ・ v1.0 雲端版
+// Backend: Google Apps Script + Google Sheet
+// Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
 
-const APP_KEY = 'kevin-cmd-app-v1';
+const COMPANY_LABEL = { fb:'Feeling Bar', mw:'滿屋設計', npw:'凱文南坡萬' };
+const COMPANY_KEYS = ['fb','mw','npw'];
 
-const COMPANY_LABEL = {
-  feelingbar: 'Feeling Bar',
-  manwu: '滿屋設計',
-  nanpowan: '凱文南坡萬',
-};
-
-// 主公專屬帳號（跨公司 + OGSM 權限）
-const LORD_USER = { username: '主公', password: '050916' };
-
-// 各公司預設帳號清單（password 為空字串者代表「待主公補密」）
-const ACCOUNTS_DEFAULT = {
-  feelingbar: [
-    { username: 'Kevin執行長', password: '050916', role: 'admin' },
-    // 主公下輪補：以下為佔位，請改密碼或新增/刪除
-    { username: '嚕嚕',         password: '',       role: 'manager' },
-    { username: '使用者A',       password: '',       role: 'staff'   },
-    { username: '使用者B',       password: '',       role: 'staff'   },
-  ],
-  manwu: [
-    { username: 'Kevin',     password: '050916', role: 'admin'   },
-    { username: 'Lulu',      password: '100002', role: 'manager' },
-    { username: 'Pei-ying',  password: '100003', role: 'staff'   },
-    { username: 'Sherry',    password: '100004', role: 'staff'   },
-    { username: '之曦',       password: '100005', role: 'staff'   },
-    { username: 'Kid',       password: '100006', role: 'staff'   },
-  ],
-  nanpowan: [
-    { username: 'Molly',  password: '999999', role: 'manager' },
-    { username: '阿軒',    password: '888888', role: 'staff'   },
-    { username: '小捲',    password: '111111', role: 'staff'   },
-    { username: 'Vic',    password: '333333', role: 'staff'   },
-    { username: '小李',    password: '777777', role: 'staff'   },
-  ],
-};
-
-// 任務狀態（PDCA + Hold）
 const STATUS = {
   plan:  { label: '📋 計畫 Plan',  color: 'var(--gray-500)' },
   do:    { label: '🚀 執行 Do',    color: 'var(--primary)'  },
@@ -325,7 +303,6 @@ const STATUS = {
   done:  { label: '✅ 完成 Act',   color: 'var(--green)'    },
   hold:  { label: '⛔ 卡關 Hold',  color: 'var(--accent)'   },
 };
-
 const PRIORITY = { high:'高 ⚡', med:'中', low:'低' };
 const AUTH = {
   L1: '🟢 L1 自決即報',
@@ -334,129 +311,223 @@ const AUTH = {
   L4: '🔴 L4 主公專斷',
 };
 
-//=========================================================================
-// State 與 Storage
-//=========================================================================
-let DB = loadDB();
-let session = null;        // {company, username, role, isLord}
-let currentCompany = null; // 主公切換時用
+// ===== Local persistence =====
+const LS_URL    = 'cmdroom_gas_url';
+const LS_TOKEN  = 'cmdroom_token';
+const LS_CACHE  = 'cmdroom_cache';   // 離線快取的 STATE
+const LS_LOGIN  = 'cmdroom_lastlogin'; // {company, username}
+
+// ===== Global state =====
+let GAS_URL = localStorage.getItem(LS_URL) || '';
+let TOKEN   = localStorage.getItem(LS_TOKEN) || '';
+let STATE   = null;             // server-returned init data
+let currentCompany = null;
 let currentPage = 'kanban';
-
-function loadDB(){
-  try{
-    const raw = localStorage.getItem(APP_KEY);
-    if(raw) return migrate(JSON.parse(raw));
-  }catch(e){}
-  return defaultDB();
-}
-function migrate(db){
-  if(!db.meta) db.meta = { version:'1.0', createdAt:new Date().toISOString() };
-  if(!db.accounts) db.accounts = JSON.parse(JSON.stringify(ACCOUNTS_DEFAULT));
-  // 補齊：若預設新增了帳號，合併進來（不覆蓋已有密碼）
-  Object.keys(ACCOUNTS_DEFAULT).forEach(c => {
-    if(!db.accounts[c]) db.accounts[c] = [];
-    ACCOUNTS_DEFAULT[c].forEach(def => {
-      if(!db.accounts[c].find(u => u.username === def.username)){
-        db.accounts[c].push({...def});
-      }
-    });
-  });
-  if(!db.tasks) db.tasks = { feelingbar:[], manwu:[], nanpowan:[] };
-  if(!db.reports) db.reports = { feelingbar:[], manwu:[], nanpowan:[] };
-  if(!db.ogsm) db.ogsm = { feelingbar:emptyOgsm(), manwu:emptyOgsm(), nanpowan:emptyOgsm() };
-  return db;
-}
-function defaultDB(){
-  return {
-    meta: { version:'1.0', createdAt:new Date().toISOString() },
-    accounts: JSON.parse(JSON.stringify(ACCOUNTS_DEFAULT)),
-    tasks:   { feelingbar:[], manwu:[], nanpowan:[] },
-    reports: { feelingbar:[], manwu:[], nanpowan:[] },
-    ogsm:    { feelingbar:emptyOgsm(), manwu:emptyOgsm(), nanpowan:emptyOgsm() },
-  };
-}
-function emptyOgsm(){
-  return {
-    objective:'',
-    goals:[],         // {name, current, target, deadline}
-    strategies:[],    // {name, description, owner}
-    measures:[],      // {name, formula, current, target, deadline, owner}
-    lastUpdated:null,
-  };
-}
-function saveDB(){
-  DB.meta.lastModified = new Date().toISOString();
-  localStorage.setItem(APP_KEY, JSON.stringify(DB));
-}
-function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+let loginCompany = 'fb';
 
 //=========================================================================
-// Login
+// API client
 //=========================================================================
-let loginCompany = 'feelingbar';
-function refreshLoginUsers(){
-  const sel = document.getElementById('loginUser');
-  const list = (DB.accounts[loginCompany]||[]);
-  sel.innerHTML = list.map(u => `<option value="${escapeHtml(u.username)}">${escapeHtml(u.username)}</option>`).join('');
-}
-document.querySelectorAll('.company-tab').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.company-tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    loginCompany = btn.dataset.company;
-    refreshLoginUsers();
-    document.getElementById('loginError').textContent = '';
-  });
-});
-document.getElementById('loginBtn').addEventListener('click', tryLogin);
-document.getElementById('loginPwd').addEventListener('keypress', e => { if(e.key==='Enter') tryLogin(); });
-document.getElementById('lordBtn').addEventListener('click', ()=>{
-  const pwd = prompt('請輸入主公密碼：');
-  if(pwd === null) return;
-  if(pwd === LORD_USER.password){
-    session = { company:'feelingbar', username:LORD_USER.username, role:'lord', isLord:true };
-    currentCompany = 'feelingbar';
-    enterApp();
+async function api(action, params = {}, opts = {}) {
+  if (!GAS_URL) throw new Error('尚未設定後端 URL');
+  const noAuthActions = ['ping','getUserList','login','lordLogin'];
+  const useGet = noAuthActions.indexOf(action) >= 0 && !opts.forcePost;
+
+  let url = GAS_URL;
+  let init = { method:'GET' };
+  if (useGet && (action === 'ping' || action === 'getUserList')) {
+    const qs = new URLSearchParams({ action, ...params }).toString();
+    url = GAS_URL + (GAS_URL.indexOf('?')>=0?'&':'?') + qs;
   } else {
-    showToast('主公密碼有誤','error');
+    init = {
+      method: 'POST',
+      // 用 text/plain 避開 CORS preflight；後端 doPost 不依賴 Content-Type
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...(TOKEN?{token:TOKEN}:{}), ...params }),
+    };
+  }
+
+  showLoading(true);
+  try {
+    const r = await fetch(url, init);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || '伺服器錯誤');
+    return j.data;
+  } catch (e) {
+    if (e instanceof TypeError) throw new Error('連線失敗，請確認 URL 與網路');
+    throw e;
+  } finally {
+    showLoading(false);
+  }
+}
+
+function showLoading(on) {
+  document.getElementById('globalLoading').classList.toggle('show', !!on);
+}
+
+//=========================================================================
+// Boot
+//=========================================================================
+document.addEventListener('DOMContentLoaded', boot);
+async function boot() {
+  if (!GAS_URL) return showSetup();
+  // 嘗試用既有 token 自動進入
+  if (TOKEN) {
+    try {
+      STATE = await api('getInitData');
+      cacheState();
+      currentCompany = STATE.me.isLord ? 'fb' : STATE.me.company;
+      enterApp();
+      return;
+    } catch (e) {
+      TOKEN = ''; localStorage.removeItem(LS_TOKEN);
+    }
+  }
+  showLogin();
+}
+
+//=========================================================================
+// Setup screen
+//=========================================================================
+function showSetup() {
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('show');
+  const s = document.getElementById('setup');
+  s.classList.remove('hidden');
+  document.getElementById('setupUrl').value = GAS_URL;
+}
+document.getElementById('setupBtn').addEventListener('click', async () => {
+  const url = document.getElementById('setupUrl').value.trim();
+  const err = document.getElementById('setupErr');
+  err.textContent = '';
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(url)) {
+    err.textContent = '網址格式不對，應是 https://script.google.com/macros/s/.../exec';
+    return;
+  }
+  GAS_URL = url;
+  try {
+    const pong = await api('ping');
+    if (!pong.version) throw new Error('回應格式異常');
+    localStorage.setItem(LS_URL, GAS_URL);
+    showToast('連線成功（v' + pong.version + '）','success');
+    document.getElementById('setup').classList.add('hidden');
+    showLogin();
+  } catch (e) {
+    err.textContent = '連線失敗：' + e.message;
   }
 });
-function tryLogin(){
+
+//=========================================================================
+// Login screen
+//=========================================================================
+async function showLogin() {
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login').classList.remove('hidden');
+  document.getElementById('loginPwd').value = '';
+  document.getElementById('loginError').textContent = '';
+  // 還原上次選擇
+  try {
+    const last = JSON.parse(localStorage.getItem(LS_LOGIN) || '{}');
+    if (last.company && COMPANY_KEYS.indexOf(last.company)>=0) {
+      loginCompany = last.company;
+      document.querySelectorAll('.company-tab').forEach(b => b.classList.toggle('active', b.dataset.company===loginCompany));
+    }
+  } catch (e) {}
+  await refreshLoginUsers();
+}
+document.querySelectorAll('.company-tab').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    document.querySelectorAll('.company-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loginCompany = btn.dataset.company;
+    document.getElementById('loginError').textContent = '';
+    await refreshLoginUsers();
+  });
+});
+async function refreshLoginUsers() {
+  const sel = document.getElementById('loginUser');
+  try {
+    const users = await api('getUserList', { company: loginCompany });
+    sel.innerHTML = users.map(u => `<option value="${escapeHtml(u.username)}">${escapeHtml(u.username)}</option>`).join('');
+    // 還原上次帳號
+    try {
+      const last = JSON.parse(localStorage.getItem(LS_LOGIN) || '{}');
+      if (last.username && last.company === loginCompany) sel.value = last.username;
+    } catch (e) {}
+  } catch (e) {
+    sel.innerHTML = `<option value="">（${escapeHtml(e.message)}）</option>`;
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginPwd').addEventListener('keypress', e => { if (e.key === 'Enter') tryLogin(); });
+async function tryLogin() {
   const username = document.getElementById('loginUser').value;
-  const pwd = document.getElementById('loginPwd').value;
+  const password = document.getElementById('loginPwd').value;
   const err = document.getElementById('loginError');
   err.textContent = '';
-  const list = DB.accounts[loginCompany] || [];
-  const u = list.find(x => x.username === username);
-  if(!u){ err.textContent = '找不到此使用者'; return; }
-  if(!u.password){ err.textContent = '此帳號尚未設定密碼，請聯繫主公'; return; }
-  if(String(u.password) !== String(pwd)){ err.textContent = '密碼錯誤'; return; }
-  session = { company:loginCompany, username:u.username, role:u.role, isLord:false };
-  currentCompany = loginCompany;
-  enterApp();
+  if (!username) { err.textContent = '請選擇使用者'; return; }
+  if (!password) { err.textContent = '請輸入密碼'; return; }
+  try {
+    const r = await api('login', { company: loginCompany, username, password });
+    TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+    localStorage.setItem(LS_LOGIN, JSON.stringify({ company:loginCompany, username }));
+    STATE = await api('getInitData');
+    cacheState();
+    currentCompany = STATE.me.company;
+    document.getElementById('login').classList.add('hidden');
+    enterApp();
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+document.getElementById('lordBtn').addEventListener('click', async () => {
+  const pwd = prompt('請輸入主公密碼：');
+  if (pwd === null) return;
+  try {
+    const r = await api('lordLogin', { password: pwd });
+    TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+    localStorage.removeItem(LS_LOGIN);
+    STATE = await api('getInitData');
+    cacheState();
+    currentCompany = 'fb';
+    document.getElementById('login').classList.add('hidden');
+    enterApp();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+document.getElementById('reSetupLink').addEventListener('click', showSetup);
+
+//=========================================================================
+// Cache
+//=========================================================================
+function cacheState() {
+  try { localStorage.setItem(LS_CACHE, JSON.stringify(STATE)); } catch(e) {}
 }
 
 //=========================================================================
 // App Shell
 //=========================================================================
-function enterApp(){
-  document.getElementById('login').style.display = 'none';
+function enterApp() {
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.add('show');
-  document.getElementById('topUser').textContent = session.username + (session.isLord?' （主公）':'') + '・' + roleLabel(session.role);
+  document.getElementById('topUser').textContent = STATE.me.username + (STATE.me.isLord?'（主公）':'') + '・' + roleLabel(STATE.me.role);
   renderTopCompany();
   renderSideNav();
   go('kanban');
 }
-function roleLabel(r){
+function roleLabel(r) {
   return ({ lord:'主公', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
 }
-function renderTopCompany(){
+function renderTopCompany() {
   const el = document.getElementById('topCompany');
-  if(session.isLord){
+  if (STATE.me.isLord) {
     el.innerHTML = `<select id="lordCompanySwitch" style="background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:5px;color:white;padding:2px 6px;font-size:12px;">
-      ${Object.entries(COMPANY_LABEL).map(([k,v])=>`<option value="${k}" ${currentCompany===k?'selected':''}>${v}</option>`).join('')}
+      ${COMPANY_KEYS.map(k => `<option value="${k}" ${currentCompany===k?'selected':''}>${COMPANY_LABEL[k]}</option>`).join('')}
     </select>`;
-    document.getElementById('lordCompanySwitch').addEventListener('change', e=>{
+    document.getElementById('lordCompanySwitch').addEventListener('change', e => {
       currentCompany = e.target.value;
       renderSideNav();
       go(currentPage);
@@ -465,30 +536,26 @@ function renderTopCompany(){
     el.textContent = COMPANY_LABEL[currentCompany];
   }
 }
-function renderSideNav(){
+function renderSideNav() {
   const items = [
-    { key:'kanban',  icon:'📋', label:'任務看板' },
-    { key:'report',  icon:'📝', label:'週報 / 一對一' },
-    { key:'pdca',    icon:'📊', label:'PDCA 儀表' },
+    { key:'kanban', icon:'📋', label:'任務看板' },
+    { key:'report', icon:'📝', label:'週報 / 一對一' },
+    { key:'pdca',   icon:'📊', label:'PDCA 儀表' },
   ];
-  if(session.isLord || session.role==='admin'){
+  if (STATE.me.isLord || STATE.me.role === 'admin') {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
   }
-  if(session.isLord){
-    items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表（主公）' });
-  }
+  if (STATE.me.isLord) items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表' });
+  items.push({ key:'profile', icon:'👤', label:'我的設定' });
+
   document.getElementById('sidenav').innerHTML = items.map(it =>
     `<button class="sidenav-item ${currentPage===it.key?'active':''}" data-go="${it.key}"><span class="icon">${it.icon}</span>${it.label}</button>`
   ).join('');
-  document.querySelectorAll('.sidenav-item').forEach(b=>{
-    b.addEventListener('click', ()=>go(b.dataset.go));
-  });
+  document.querySelectorAll('.sidenav-item').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
 }
-function go(page){
+function go(page) {
   currentPage = page;
-  document.querySelectorAll('.sidenav-item').forEach(b=>{
-    b.classList.toggle('active', b.dataset.go===page);
-  });
+  document.querySelectorAll('.sidenav-item').forEach(b => b.classList.toggle('active', b.dataset.go===page));
   const m = document.getElementById('main');
   m.scrollTop = 0;
   ({
@@ -497,59 +564,50 @@ function go(page){
     pdca:   renderPdca,
     people: renderPeople,
     ogsm:   renderOgsm,
+    profile: renderProfile,
   }[page] || renderKanban)(m);
 }
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  if(!confirm('確定登出？')) return;
-  session = null;
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  try {
+    STATE = await api('getInitData');
+    cacheState();
+    go(currentPage);
+    showToast('已重新整理','success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+});
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  if (!confirm('確定登出？')) return;
+  try { await api('logout'); } catch(e) {}
+  TOKEN = ''; localStorage.removeItem(LS_TOKEN);
+  STATE = null;
   document.getElementById('app').classList.remove('show');
-  document.getElementById('login').style.display = '';
-  document.getElementById('loginPwd').value = '';
-});
-document.getElementById('exportBtn').addEventListener('click', ()=>{
-  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `commander_room_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click(); URL.revokeObjectURL(url);
-  showToast('已匯出 JSON 備份','success');
-});
-document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
-document.getElementById('importFile').addEventListener('change', e=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    try{
-      const data = JSON.parse(ev.target.result);
-      if(!confirm('確定要匯入並覆蓋目前所有資料嗎？建議先匯出備份。')) return;
-      DB = migrate(data); saveDB(); go(currentPage);
-      showToast('匯入完成','success');
-    }catch(err){ showToast('匯入失敗：'+err.message,'error'); }
-  };
-  r.readAsText(f);
+  showLogin();
 });
 
 //=========================================================================
-// Kanban — 任務卡看板（PDCA 五欄）
+// Kanban — 任務看板
 //=========================================================================
-function renderKanban(m){
-  const tasks = DB.tasks[currentCompany] || [];
-  const myView = (session.isLord || session.role==='admin' || session.role==='manager');
-
-  const filtered = myView ? tasks : tasks.filter(t => t.assignee === session.username || t.creator === session.username);
+function renderKanban(m) {
+  const tasks = (STATE.tasks?.[currentCompany]) || [];
+  const me = STATE.me;
+  const myView = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+  // staff 在 server 端已過濾為自己的任務；這裡無需再過濾
   const grouped = { plan:[], do:[], check:[], done:[], hold:[] };
-  filtered.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
-  Object.keys(grouped).forEach(k => grouped[k].sort((a,b)=>(b.priority==='high')-(a.priority==='high') || (a.deadline||'').localeCompare(b.deadline||'')));
-
-  const canCreate = (session.isLord || ['admin','manager'].includes(session.role));
+  tasks.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
+  Object.keys(grouped).forEach(k =>
+    grouped[k].sort((a,b)=>(b.priority==='high')-(a.priority==='high') || (a.deadline||'').localeCompare(b.deadline||''))
+  );
+  const canCreate = me.isLord || ['admin','manager'].indexOf(me.role)>=0;
 
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">任務看板</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司視角':'我的任務'} ・ 共 ${filtered.length} 件</p>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司視角':'我的任務'} ・ 共 ${tasks.length} 件</p>
       <div class="page-actions">
         ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
-        <button class="btn btn-ghost" onclick="go('kanban')">🔄 重新整理</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('refreshBtn').click()">🔄 重新整理</button>
       </div>
     </div>
 
@@ -557,7 +615,7 @@ function renderKanban(m){
       <summary>💡 任務卡使用說明（軍師心法）</summary>
       <div style="margin-top:6px;line-height:1.7;">
         每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。其中「為什麼」與「紅線」是最常被省略卻最重要的——沒有它，下屬只能死板照做或不敢決定。<br>
-        狀態流轉（PDCA）：📋 計畫 Plan → 🚀 執行 Do → 🔍 檢視 Check → ✅ 完成 Act。卡關時可暫放 ⛔ Hold 並寫明阻塞原因。
+        狀態流轉（PDCA）：📋 計畫 → 🚀 執行 → 🔍 檢視 → ✅ 完成。卡關時可暫放 ⛔ Hold 並寫明阻塞原因。
       </div>
     </details>
 
@@ -575,11 +633,9 @@ function renderKanban(m){
       `).join('')}
     </div>
   `;
-  m.querySelectorAll('.task-card').forEach(c=>{
-    c.addEventListener('click', ()=>openTaskModal(c.dataset.id));
-  });
+  m.querySelectorAll('.task-card').forEach(c => c.addEventListener('click', () => openTaskModal(c.dataset.id)));
 }
-function taskCard(t){
+function taskCard(t) {
   const today = new Date().toISOString().slice(0,10);
   const overdue = t.deadline && t.deadline < today && t.status !== 'done';
   return `
@@ -594,14 +650,35 @@ function taskCard(t){
   `;
 }
 
-function openTaskModal(id){
-  const tasks = DB.tasks[currentCompany];
-  const t = id ? tasks.find(x=>x.id===id) : null;
+function openTaskModal(id) {
+  const tasks = STATE.tasks[currentCompany] || [];
+  const t = id ? tasks.find(x => x.id === id) : null;
   const isNew = !t;
-  const data = t || { id:uid(), title:'', why:'', doneLook:'', redLines:'', deadline:'', midCheck:'', assignee:session.username, creator:session.username, priority:'med', authLevel:'L2', status:'plan', createdAt:new Date().toISOString(), notes:[] };
-  const userList = (DB.accounts[currentCompany]||[]).map(u=>u.username);
-  const canDelete = (session.isLord || session.username===data.creator || session.role==='admin');
-  const canEdit = (session.isLord || ['admin','manager'].includes(session.role) || session.username===data.creator || session.username===data.assignee);
+  const me = STATE.me;
+  const data = t || {
+    id:'', title:'', why:'', doneLook:'', redLines:'',
+    deadline:'', midCheck:'',
+    assignee: me.isLord ? '' : me.username,
+    creator:  me.username,
+    priority:'med', authLevel:'L2', status:'plan',
+    company: currentCompany,
+    createdAt:'', notes:[]
+  };
+
+  // 取得使用者列表（給 assignee 下拉用）
+  // 主公 / admin 從 STATE.accounts；其餘成員退而求其次用 STATE.me.username 或既有任務的 assignee 集合
+  let userList = [];
+  if (STATE.accounts && STATE.accounts[currentCompany]) {
+    userList = STATE.accounts[currentCompany].map(u => u.username);
+  } else {
+    const set = new Set([me.username]);
+    tasks.forEach(t => { if (t.assignee) set.add(t.assignee); if (t.creator) set.add(t.creator); });
+    userList = Array.from(set);
+  }
+
+  const canDelete = me.isLord || me.role==='admin' || data.creator===me.username;
+  const canEdit = me.isLord || ['admin','manager'].indexOf(me.role)>=0
+                  || data.creator===me.username || data.assignee===me.username || isNew;
 
   showModal({
     title: isNew?'新建任務卡':'任務卡詳情',
@@ -636,61 +713,58 @@ function openTaskModal(id){
         <div class="field">
           <label class="field-label">指派給</label>
           <select class="field-select" id="f-assignee">
-            ${userList.map(u=>`<option value="${escapeHtml(u)}" ${data.assignee===u?'selected':''}>${escapeHtml(u)}</option>`).join('')}
+            <option value="">未指派</option>
+            ${userList.map(u => `<option value="${escapeHtml(u)}" ${data.assignee===u?'selected':''}>${escapeHtml(u)}</option>`).join('')}
           </select>
         </div>
         <div class="field">
           <label class="field-label">優先級</label>
           <select class="field-select" id="f-priority">
-            ${Object.entries(PRIORITY).map(([k,v])=>`<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
+            ${Object.entries(PRIORITY).map(([k,v]) => `<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
         <div class="field">
           <label class="field-label">授權等級</label>
           <select class="field-select" id="f-auth">
-            ${Object.entries(AUTH).map(([k,v])=>`<option value="${k}" ${data.authLevel===k?'selected':''}>${v}</option>`).join('')}
+            ${Object.entries(AUTH).map(([k,v]) => `<option value="${k}" ${data.authLevel===k?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="field">
         <label class="field-label">狀態（PDCA）</label>
         <select class="field-select" id="f-status">
-          ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${data.status===k?'selected':''}>${v.label}</option>`).join('')}
+          ${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${data.status===k?'selected':''}>${v.label}</option>`).join('')}
         </select>
       </div>
       ${data.notes && data.notes.length ? `
       <div class="field">
         <label class="field-label">進度紀錄</label>
         <div style="background:var(--gray-50);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gray-700);max-height:140px;overflow-y:auto;">
-          ${data.notes.map(n=>`<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${n.at.slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
+          ${data.notes.map(n => `<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${(n.at||'').slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
         </div>
       </div>` : ''}
       <div class="field">
         <label class="field-label">新增進度／回報（可留空）</label>
         <textarea class="field-textarea" id="f-newnote" placeholder="例：今日已聯繫供應商 X，等明日報價。"></textarea>
       </div>
-      <p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${data.createdAt.slice(0,16).replace('T',' ')}</p>
+      ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${(data.createdAt||'').slice(0,16).replace('T',' ')}</p>`:''}
     `,
     foot: `
       ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
       <span style="flex:1;"></span>
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
-      ${canEdit ? `<button class="btn btn-primary" onclick="saveTask('${data.id}', ${isNew?'true':'false'})">${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
+      ${canEdit ? `<button class="btn btn-primary" onclick="saveTask(${isNew?'null':JSON.stringify(data.id)})">${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
     `,
   });
 }
-function saveTask(id, isNew){
+async function saveTask(id) {
   const get = sel => document.getElementById(sel).value.trim();
   const title = get('f-title');
-  if(!title){ showToast('任務名稱必填','error'); return; }
+  if (!title) { showToast('任務名稱必填','error'); return; }
   const newNote = get('f-newnote');
-  const tasks = DB.tasks[currentCompany];
-  let t = tasks.find(x=>x.id===id);
-  if(!t){
-    t = { id, createdAt:new Date().toISOString(), creator:session.username, notes:[] };
-    tasks.push(t);
-  }
-  Object.assign(t, {
+  const task = {
+    id: id || '',
+    company: currentCompany,
     title,
     why:        get('f-why'),
     doneLook:   get('f-done'),
@@ -701,40 +775,52 @@ function saveTask(id, isNew){
     priority:   get('f-priority'),
     authLevel:  get('f-auth'),
     status:     get('f-status'),
-  });
-  if(t.status==='done' && !t.completedAt) t.completedAt = new Date().toISOString();
-  if(t.status!=='done') t.completedAt = null;
-  if(newNote){
-    t.notes = t.notes || [];
-    t.notes.push({ at:new Date().toISOString(), by:session.username, text:newNote });
+  };
+  if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, text:newNote }];
+
+  try {
+    await api('saveTask', { task });
+    STATE = await api('getInitData'); cacheState();
+    closeModal();
+    go('kanban');
+    showToast(id?'已儲存':'已建立任務','success');
+  } catch (e) {
+    showToast(e.message,'error');
   }
-  saveDB(); closeModal(); go('kanban');
-  showToast(isNew?'已建立任務':'已儲存','success');
 }
-function deleteTask(id){
-  if(!confirm('確定刪除此任務？無法復原。')) return;
-  DB.tasks[currentCompany] = DB.tasks[currentCompany].filter(x=>x.id!==id);
-  saveDB(); closeModal(); go('kanban');
-  showToast('已刪除','warn');
+async function deleteTask(id) {
+  if (!confirm('確定刪除此任務？無法復原。')) return;
+  try {
+    await api('deleteTask', { company: currentCompany, taskId: id });
+    STATE = await api('getInitData'); cacheState();
+    closeModal();
+    go('kanban');
+    showToast('已刪除','warn');
+  } catch (e) {
+    showToast(e.message,'error');
+  }
 }
 
 //=========================================================================
-// Weekly Report — 週報 + 一對一整合 + 未完成追蹤
+// Weekly Report
 //=========================================================================
-function renderReport(m){
-  const myReports = (DB.reports[currentCompany]||[]).filter(r => r.username === session.username || session.isLord || session.role==='admin');
-  const myTasks = (DB.tasks[currentCompany]||[]).filter(t => t.assignee === session.username);
+function renderReport(m) {
+  const me = STATE.me;
+  const allReports = (STATE.reports?.[currentCompany]) || [];
+  const myReports = me.isLord || me.role==='admin' ? allReports : allReports.filter(r => r.username === me.username);
+  const allTasks = (STATE.tasks?.[currentCompany]) || [];
+  const myTasks = allTasks.filter(t => t.assignee === me.username);
+  const today = new Date().toISOString().slice(0,10);
   const blockedOrInProgress = myTasks.filter(t => ['do','hold'].includes(t.status));
-  const overdue = myTasks.filter(t => t.deadline && t.deadline < new Date().toISOString().slice(0,10) && t.status!=='done');
+  const overdue = myTasks.filter(t => t.deadline && t.deadline < today && t.status !== 'done');
   const wk = currentWeekId();
-  const existing = (DB.reports[currentCompany]||[]).find(r => r.username===session.username && r.weekId===wk);
-
-  const isOneOnOneWeek = isEvenWeek(wk);  // 雙週一對一
+  const existing = allReports.find(r => r.username===me.username && r.weekId===wk);
+  const isOneOnOneWeek = isEvenWeek(wk);
 
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">本週週報</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${session.username} ・ 週次 ${wk}</p>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${escapeHtml(me.username)} ・ 週次 ${wk}</p>
     </div>
 
     <details class="help-block">
@@ -746,7 +832,7 @@ function renderReport(m){
       </div>
     </details>
 
-    ${blockedOrInProgress.length || overdue.length ? `
+    ${(blockedOrInProgress.length || overdue.length) ? `
       <div class="related-tasks">
         <div class="related-tasks-title">📌 自動帶入：你目前未完成的任務</div>
         ${overdue.length?`<div style="color:var(--accent);">⚠️ 已逾期 ${overdue.length} 件：${overdue.map(t=>escapeHtml(t.title)).join('・')}</div>`:''}
@@ -787,7 +873,7 @@ function renderReport(m){
     </div>
 
     <h3 style="margin:24px 0 10px;font-size:15px;color:var(--gray-700);">📚 歷史週報（最近 8 週）</h3>
-    ${(myReports.slice().sort((a,b)=>b.weekId.localeCompare(a.weekId)).slice(0,8)).map(r => `
+    ${(myReports.slice().sort((a,b)=>(b.weekId||'').localeCompare(a.weekId||'')).slice(0,8)).map(r => `
       <div class="report-card" style="padding:14px 18px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <strong>${r.weekId} ・ ${escapeHtml(r.username)}</strong>
@@ -801,7 +887,7 @@ function renderReport(m){
     `).join('') || `<div class="empty-state">尚無歷史週報</div>`}
   `;
 }
-function reportField(id, num, label, val, color, hint, type='area'){
+function reportField(id, num, label, val, color, hint, type='area') {
   return `
     <div class="report-section">
       <div class="report-section-head">
@@ -814,53 +900,60 @@ function reportField(id, num, label, val, color, hint, type='area'){
     </div>
   `;
 }
-function saveReport(withOneOnOne){
+async function saveReport(withOneOnOne) {
   const wk = currentWeekId();
-  const list = DB.reports[currentCompany];
-  let r = list.find(x => x.username===session.username && x.weekId===wk);
-  if(!r){ r = { id:uid(), weekId:wk, username:session.username, createdAt:new Date().toISOString() }; list.push(r); }
-  r.done       = document.getElementById('r-done').value.trim();
-  r.blocking   = document.getElementById('r-block').value.trim();
-  r.nextWeek   = document.getElementById('r-next').value.trim();
-  r.ownDecisions = document.getElementById('r-decide').value.trim();
-  r.mood       = document.getElementById('r-mood').value.trim();
-  if(withOneOnOne){
-    r.oneOnOne = {
+  const me = STATE.me;
+  const report = {
+    company: currentCompany,
+    weekId: wk,
+    username: me.username,
+    done:        document.getElementById('r-done').value.trim(),
+    blocking:    document.getElementById('r-block').value.trim(),
+    nextWeek:    document.getElementById('r-next').value.trim(),
+    ownDecisions:document.getElementById('r-decide').value.trim(),
+    mood:        document.getElementById('r-mood').value.trim(),
+  };
+  if (withOneOnOne) {
+    report.oneOnOne = {
       proudJudgment:     document.getElementById('r-q1').value.trim(),
       uncertainDecision: document.getElementById('r-q2').value.trim(),
       upcomingJudgments: document.getElementById('r-q3').value.trim(),
     };
   }
-  saveDB(); showToast('週報已儲存','success'); go('report');
+  try {
+    await api('saveReport', { report });
+    STATE = await api('getInitData'); cacheState();
+    showToast('週報已儲存','success');
+    go('report');
+  } catch (e) {
+    showToast(e.message,'error');
+  }
 }
 
 //=========================================================================
 // PDCA Dashboard
 //=========================================================================
-function renderPdca(m){
-  const tasks = (DB.tasks[currentCompany]||[]);
-  const myView = (session.isLord || ['admin','manager'].includes(session.role));
-  const scope = myView ? tasks : tasks.filter(t => t.assignee===session.username);
+function renderPdca(m) {
+  const tasks = (STATE.tasks?.[currentCompany]) || [];
   const today = new Date().toISOString().slice(0,10);
   const counts = {plan:0,do:0,check:0,done:0,hold:0};
-  scope.forEach(t => counts[t.status]=(counts[t.status]||0)+1);
-  const total = scope.length;
-  const overdue = scope.filter(t => t.deadline && t.deadline < today && t.status!=='done').length;
-  const completionRate = total ? Math.round(counts.done / total * 100) : 0;
-  const avgCycle = avgCycleDays(scope);
-
-  // PDCA per-assignee 分布
+  tasks.forEach(t => counts[t.status] = (counts[t.status]||0)+1);
+  const total = tasks.length;
+  const overdue = tasks.filter(t => t.deadline && t.deadline < today && t.status!=='done').length;
+  const completionRate = total ? Math.round(counts.done/total*100) : 0;
+  const avgCycle = avgCycleDays(tasks);
   const byAssignee = {};
-  scope.forEach(t => {
-    if(!byAssignee[t.assignee]) byAssignee[t.assignee] = {plan:0,do:0,check:0,done:0,hold:0,total:0};
-    byAssignee[t.assignee][t.status]++;
-    byAssignee[t.assignee].total++;
+  tasks.forEach(t => {
+    const k = t.assignee || '未指派';
+    if (!byAssignee[k]) byAssignee[k] = {plan:0,do:0,check:0,done:0,hold:0,total:0};
+    byAssignee[k][t.status] = (byAssignee[k][t.status]||0)+1;
+    byAssignee[k].total++;
   });
 
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">PDCA 監控儀表</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${myView?'全公司':'我的'} ・ 共 ${total} 件任務</p>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ 共 ${total} 件任務</p>
     </div>
 
     <div class="stat-grid">
@@ -878,19 +971,19 @@ function renderPdca(m){
     </div>
 
     <div class="pdca-flow">
-      <h3>👥 各成員 PDCA 分布${myView?'':'（僅我的）'}</h3>
+      <h3>👥 各成員 PDCA 分布</h3>
       ${Object.keys(byAssignee).length===0 ? `<div class="empty-state">尚無資料</div>` :
-      Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total).map(([who, c])=>{
+      Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total).map(([who, c]) => {
         const tot = c.total || 1;
         return `
           <div style="margin-bottom:12px;">
             <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escapeHtml(who)} <span style="color:var(--gray-400);font-size:11px;font-weight:400;">共 ${c.total} 件</span></div>
-            <div class="bar-track" style="display:flex;">
-              <div style="background:var(--gray-400);width:${c.plan/tot*100}%;" title="Plan ${c.plan}"></div>
-              <div style="background:var(--primary);width:${c.do/tot*100}%;" title="Do ${c.do}"></div>
-              <div style="background:var(--yellow);width:${c.check/tot*100}%;" title="Check ${c.check}"></div>
-              <div style="background:var(--green);width:${c.done/tot*100}%;" title="Done ${c.done}"></div>
-              <div style="background:var(--accent);width:${c.hold/tot*100}%;" title="Hold ${c.hold}"></div>
+            <div class="bar-track">
+              <div style="background:var(--gray-400);width:${c.plan/tot*100}%;"></div>
+              <div style="background:var(--primary);width:${c.do/tot*100}%;"></div>
+              <div style="background:var(--yellow);width:${c.check/tot*100}%;"></div>
+              <div style="background:var(--green);width:${c.done/tot*100}%;"></div>
+              <div style="background:var(--accent);width:${c.hold/tot*100}%;"></div>
             </div>
             <div style="font-size:11px;color:var(--gray-500);margin-top:3px;">📋${c.plan} 🚀${c.do} 🔍${c.check} ✅${c.done} ⛔${c.hold}</div>
           </div>
@@ -901,11 +994,17 @@ function renderPdca(m){
 }
 
 //=========================================================================
-// People — 帳號管理
+// People — 帳號管理（admin / lord）
 //=========================================================================
-function renderPeople(m){
+async function renderPeople(m) {
   const company = currentCompany;
-  const list = DB.accounts[company] || [];
+  let list = [];
+  try {
+    list = await api('listUsers', { company });
+  } catch (e) {
+    m.innerHTML = `<div class="empty-state">${escapeHtml(e.message)}</div>`;
+    return;
+  }
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">帳號管理</h2>
@@ -914,33 +1013,43 @@ function renderPeople(m){
         <button class="btn btn-primary" onclick="openUserEdit('${company}')">+ 新增使用者</button>
       </div>
     </div>
+    <div style="background:#FFF8DC;border:1px solid #E8B923;border-radius:8px;padding:8px 12px;font-size:12px;color:#7C5C00;margin-bottom:10px;">
+      🔐 <b>Admin 視圖</b>：以下顯示所有員工明文密碼，僅主公／admin 可見。請勿截圖外流。點 👁 切換顯示／遮罩。
+    </div>
     <div style="background:white;border-radius:10px;box-shadow:var(--shadow-sm);overflow:hidden;">
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 90px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
-        <div>使用者</div><div>密碼</div><div>角色</div><div>操作</div>
+      <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1fr 110px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
+        <div>使用者</div>
+        <div>密碼 <button onclick="togglePwdAll(this)" style="margin-left:6px;font-size:11px;color:var(--gray-500);">👁</button></div>
+        <div>角色</div><div>操作</div>
       </div>
-      ${list.map((u,idx)=>`
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 90px;padding:10px 14px;border-top:1px solid var(--gray-100);font-size:13px;align-items:center;">
-          <div><b>${escapeHtml(u.username)}</b></div>
-          <div style="font-family:monospace;color:${u.password?'var(--gray-700)':'var(--accent)'};">${u.password?'••••••':'(未設定)'}</div>
+      ${list.map((u,idx) => `
+        <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1fr 110px;padding:10px 14px;border-top:1px solid var(--gray-100);font-size:13px;align-items:center;">
+          <div><b>${escapeHtml(u.username)}</b>${u.locked?` <span style="color:var(--accent);font-size:11px;">🔒已鎖定</span>`:''}</div>
+          <div style="font-family:monospace;color:${u.hasPassword?'var(--gray-800)':'var(--accent)'};">
+            ${u.hasPassword
+              ? `<span class="pwd-cell" data-clear="${escapeHtml(u.password)}" data-mask="••••••">••••••</span>`
+              : '<span style="color:var(--accent);font-style:italic;">(未設定)</span>'}
+          </div>
           <div>${roleLabel(u.role)}</div>
-          <div><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="openUserEdit('${company}',${idx})">編輯</button></div>
+          <div><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick='openUserEdit("${company}", ${JSON.stringify(u).replace(/"/g,"&quot;")})'>編輯</button></div>
         </div>
       `).join('')}
     </div>
   `;
 }
-function openUserEdit(company, idx){
-  const u = idx!==undefined ? DB.accounts[company][idx] : { username:'', password:'', role:'staff' };
+function openUserEdit(company, payload) {
+  const u = payload && typeof payload==='object' ? payload : { username:'', role:'staff', locked:0, hasPassword:false };
+  const isNew = !payload;
   showModal({
-    title: idx!==undefined ? '編輯使用者' : '新增使用者',
+    title: isNew ? '新增使用者' : '編輯使用者',
     body: `
       <div class="field">
         <label class="field-label">使用者名稱 <span class="req">*</span></label>
         <input class="field-input" id="u-name" value="${escapeHtml(u.username)}">
       </div>
       <div class="field">
-        <label class="field-label">密碼</label>
-        <input class="field-input" id="u-pwd" value="${escapeHtml(u.password||'')}" placeholder="留空表示未設定，無法登入">
+        <label class="field-label">密碼（留空＝${isNew?'未設定':'保留原密碼'}）</label>
+        <input class="field-input" id="u-pwd" placeholder="${isNew?'建議 4-6 位數字':'留空保留原密碼'}">
       </div>
       <div class="field">
         <label class="field-label">角色</label>
@@ -950,52 +1059,76 @@ function openUserEdit(company, idx){
           <option value="staff"   ${u.role==='staff'?'selected':''}>staff（成員）</option>
         </select>
       </div>
+      ${!isNew ? `
+        <div class="field">
+          <label class="field-label">鎖定狀態</label>
+          <select class="field-select" id="u-locked">
+            <option value="0" ${!u.locked?'selected':''}>正常</option>
+            <option value="1" ${u.locked?'selected':''}>鎖定（無法登入）</option>
+          </select>
+          <div class="field-hint">將「鎖定」改回「正常」會同時清空登入錯誤次數</div>
+        </div>
+      ` : ''}
     `,
     foot: `
-      ${idx!==undefined ? `<button class="btn btn-danger" onclick="deleteUser('${company}',${idx})">刪除</button>` : ''}
+      ${(!isNew) ? `<button class="btn btn-danger" onclick='deleteUser("${company}", ${JSON.stringify(u.username)})'>刪除</button>` : ''}
       <span style="flex:1;"></span>
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveUser('${company}',${idx===undefined?-1:idx})">儲存</button>
+      <button class="btn btn-primary" onclick='saveUser("${company}", ${JSON.stringify(u.username)})'>儲存</button>
     `,
   });
 }
-function saveUser(company, idx){
-  const name = document.getElementById('u-name').value.trim();
-  const pwd  = document.getElementById('u-pwd').value.trim();
-  const role = document.getElementById('u-role').value;
-  if(!name){ showToast('使用者名稱必填','error'); return; }
-  const list = DB.accounts[company];
-  if(idx>=0){
-    list[idx] = { username:name, password:pwd, role };
-  } else {
-    if(list.find(u => u.username===name)){ showToast('使用者已存在','error'); return; }
-    list.push({ username:name, password:pwd, role });
+async function saveUser(company, originalUsername) {
+  const user = {
+    username: document.getElementById('u-name').value.trim(),
+    password: document.getElementById('u-pwd').value,
+    role: document.getElementById('u-role').value,
+    locked: document.getElementById('u-locked') ? Number(document.getElementById('u-locked').value) : 0,
+  };
+  if (!user.username) { showToast('使用者名稱必填','error'); return; }
+  try {
+    await api('saveUser', { company, user, originalUsername });
+    closeModal();
+    go('people');
+    showToast('已儲存','success');
+  } catch (e) {
+    showToast(e.message,'error');
   }
-  saveDB(); closeModal(); go('people');
-  showToast('已儲存','success');
 }
-function deleteUser(company, idx){
-  if(!confirm('確定刪除此使用者？')) return;
-  DB.accounts[company].splice(idx,1);
-  saveDB(); closeModal(); go('people');
-  showToast('已刪除','warn');
+function togglePwdAll(btn) {
+  const cells = document.querySelectorAll('.pwd-cell');
+  if (!cells.length) return;
+  const showing = cells[0].textContent !== cells[0].dataset.mask;
+  cells.forEach(c => { c.textContent = showing ? c.dataset.mask : c.dataset.clear; });
+  if (btn) btn.textContent = showing ? '👁' : '🙈';
+}
+async function deleteUser(company, username) {
+  if (!confirm('確定刪除此使用者？')) return;
+  try {
+    await api('deleteUser', { company, username });
+    closeModal();
+    go('people');
+    showToast('已刪除','warn');
+  } catch (e) {
+    showToast(e.message,'error');
+  }
 }
 
 //=========================================================================
-// OGSM — 主公專屬戰略表
+// OGSM (主公限定)
 //=========================================================================
-function renderOgsm(m){
-  if(!session.isLord){
+function renderOgsm(m) {
+  if (!STATE.me.isLord) {
     m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>OGSM 戰略表為主公專屬</div>`;
     return;
   }
   const company = currentCompany;
-  const o = DB.ogsm[company] || emptyOgsm();
+  const o = (STATE.ogsm && STATE.ogsm[company]) || { objective:'', goals:[], strategies:[], measures:[], lastUpdated:'' };
 
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">OGSM 戰略表</h2>
-      <p class="page-sub">${COMPANY_LABEL[company]} ・ 主公限定 ・ 最後更新 ${o.lastUpdated?o.lastUpdated.slice(0,16).replace('T',' '):'尚未更新'}</p>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ 主公限定 ・ 最後更新 ${(o.lastUpdated||'').slice(0,16).replace('T',' ') || '尚未更新'}</p>
     </div>
 
     <details class="help-block">
@@ -1011,27 +1144,27 @@ function renderOgsm(m){
     <div class="ogsm-grid">
       <div class="ogsm-block">
         <h3><span class="letter">O</span>Objective 目的（質化方向）</h3>
-        <textarea class="field-textarea" id="o-obj" placeholder="一句話，本年／本季的核心方向。例：讓 Feeling Bar 在士林微醺市場成為「下班後第一個想到的地方」。">${escapeHtml(o.objective)}</textarea>
+        <textarea class="field-textarea" id="o-obj" placeholder="一句話，本年／本季的核心方向。例：讓 Feeling Bar 在士林微醺市場成為「下班後第一個想到的地方」。">${escapeHtml(o.objective||'')}</textarea>
       </div>
 
       <div class="ogsm-block" style="border-left-color:var(--green);">
         <h3 style="color:var(--green);"><span class="letter" style="background:var(--green);">G</span>Goals 量化目標</h3>
         <div class="ogsm-row head"><div>目標名稱</div><div>現值</div><div>目標</div><div>截止</div></div>
-        <div id="o-goals">${(o.goals||[]).map((g,i)=>ogsmGoalRow(g,i)).join('')}</div>
+        <div id="o-goals">${(o.goals||[]).map(g => ogsmGoalRow(g)).join('')}</div>
         <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('goals')">+ 新增目標</button>
       </div>
 
       <div class="ogsm-block" style="border-left-color:var(--yellow);">
         <h3 style="color:var(--yellow);"><span class="letter" style="background:var(--yellow);">S</span>Strategies 策略（打法）</h3>
-        <div class="ogsm-row head"><div>策略名稱</div><div colspan="2">說明</div><div>負責人</div></div>
-        <div id="o-strategies">${(o.strategies||[]).map((s,i)=>ogsmStrategyRow(s,i)).join('')}</div>
+        <div class="ogsm-row head" style="grid-template-columns:1fr 2fr 110px;"><div>策略名稱</div><div>說明</div><div>負責人</div></div>
+        <div id="o-strategies">${(o.strategies||[]).map(s => ogsmStrategyRow(s)).join('')}</div>
         <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('strategies')">+ 新增策略</button>
       </div>
 
       <div class="ogsm-block" style="border-left-color:var(--accent);">
         <h3 style="color:var(--accent);"><span class="letter" style="background:var(--accent);">M</span>Measures 衡量指標</h3>
         <div class="ogsm-row head"><div>指標</div><div>現值</div><div>目標</div><div>截止 / 負責</div></div>
-        <div id="o-measures">${(o.measures||[]).map((m,i)=>ogsmMeasureRow(m,i)).join('')}</div>
+        <div id="o-measures">${(o.measures||[]).map(mz => ogsmMeasureRow(mz)).join('')}</div>
         <button class="btn btn-ghost" style="margin-top:8px;" onclick="ogsmAdd('measures')">+ 新增指標</button>
       </div>
 
@@ -1041,7 +1174,7 @@ function renderOgsm(m){
     </div>
   `;
 }
-function ogsmGoalRow(g={}, i){
+function ogsmGoalRow(g={}) {
   return `
     <div class="ogsm-row">
       <input class="field-input" data-k="name"     value="${escapeHtml(g.name||'')}"     placeholder="例：週營收">
@@ -1050,7 +1183,7 @@ function ogsmGoalRow(g={}, i){
       <input class="field-input" data-k="deadline" value="${escapeHtml(g.deadline||'')}" type="date">
     </div>`;
 }
-function ogsmStrategyRow(s={}, i){
+function ogsmStrategyRow(s={}) {
   return `
     <div class="ogsm-row" style="grid-template-columns:1fr 2fr 110px;">
       <input class="field-input" data-k="name"        value="${escapeHtml(s.name||'')}"        placeholder="例：晚間外送社團團購">
@@ -1058,7 +1191,7 @@ function ogsmStrategyRow(s={}, i){
       <input class="field-input" data-k="owner"       value="${escapeHtml(s.owner||'')}"       placeholder="負責人">
     </div>`;
 }
-function ogsmMeasureRow(m={}, i){
+function ogsmMeasureRow(m={}) {
   return `
     <div class="ogsm-row">
       <input class="field-input" data-k="name"     value="${escapeHtml(m.name||'')}"     placeholder="例：團購社團每週發文 ≥3">
@@ -1067,26 +1200,30 @@ function ogsmMeasureRow(m={}, i){
       <input class="field-input" data-k="owner"    value="${escapeHtml(m.owner||'')}"    placeholder="截止 / 負責人">
     </div>`;
 }
-function ogsmAdd(section){
+function ogsmAdd(section) {
   const el = document.getElementById('o-'+section);
-  const html = section==='goals' ? ogsmGoalRow({}, el.children.length)
-            : section==='strategies' ? ogsmStrategyRow({}, el.children.length)
-            : ogsmMeasureRow({}, el.children.length);
+  const html = section==='goals' ? ogsmGoalRow()
+            : section==='strategies' ? ogsmStrategyRow()
+            : ogsmMeasureRow();
   el.insertAdjacentHTML('beforeend', html);
 }
-function saveOgsm(){
-  const company = currentCompany;
-  const o = DB.ogsm[company] || emptyOgsm();
-  o.objective = document.getElementById('o-obj').value.trim();
-  o.goals      = readOgsmRows('o-goals',      ['name','current','target','deadline']);
-  o.strategies = readOgsmRows('o-strategies', ['name','description','owner']);
-  o.measures   = readOgsmRows('o-measures',   ['name','current','target','owner']);
-  o.lastUpdated = new Date().toISOString();
-  DB.ogsm[company] = o;
-  saveDB();
-  showToast('OGSM 已儲存','success');
+async function saveOgsm() {
+  const ogsm = {
+    objective:  document.getElementById('o-obj').value.trim(),
+    goals:      readOgsmRows('o-goals',      ['name','current','target','deadline']),
+    strategies: readOgsmRows('o-strategies', ['name','description','owner']),
+    measures:   readOgsmRows('o-measures',   ['name','current','target','owner']),
+  };
+  try {
+    await api('saveOgsm', { company: currentCompany, ogsm });
+    STATE = await api('getInitData'); cacheState();
+    showToast('OGSM 已儲存','success');
+    go('ogsm');
+  } catch (e) {
+    showToast(e.message,'error');
+  }
 }
-function readOgsmRows(id, keys){
+function readOgsmRows(id, keys) {
   const rows = document.getElementById(id).children;
   return Array.from(rows).map(row => {
     const obj = {};
@@ -1099,34 +1236,87 @@ function readOgsmRows(id, keys){
 }
 
 //=========================================================================
+// Profile (改密碼 / 我的設定)
+//=========================================================================
+function renderProfile(m) {
+  const me = STATE.me;
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">我的設定</h2>
+      <p class="page-sub">${escapeHtml(me.username)} ・ ${COMPANY_LABEL[me.company]||''} ・ ${roleLabel(me.role)}</p>
+    </div>
+
+    ${me.isLord ? `
+      <div class="report-card">
+        <div style="font-size:14px;color:var(--gray-700);">
+          主公密碼存於 system sheet 的 <code>lord_password</code>，請直接於 Google Sheet 修改。<br>
+          可在頂部下拉切換三家公司視角。
+        </div>
+      </div>
+    ` : `
+      <div class="report-card">
+        <h3 style="margin:0 0 12px;font-size:15px;">🔐 修改密碼</h3>
+        <div class="field">
+          <label class="field-label">舊密碼</label>
+          <input class="field-input" type="password" id="p-old">
+        </div>
+        <div class="field">
+          <label class="field-label">新密碼（至少 4 碼）</label>
+          <input class="field-input" type="password" id="p-new">
+        </div>
+        <div class="field">
+          <label class="field-label">再次輸入新密碼</label>
+          <input class="field-input" type="password" id="p-new2">
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="changeMyPassword()">變更密碼</button>
+        </div>
+      </div>
+    `}
+  `;
+}
+async function changeMyPassword() {
+  const o = document.getElementById('p-old').value;
+  const n = document.getElementById('p-new').value;
+  const n2 = document.getElementById('p-new2').value;
+  if (!o || !n) { showToast('請填寫舊／新密碼','error'); return; }
+  if (n !== n2) { showToast('兩次輸入的新密碼不一致','error'); return; }
+  if (n.length < 4) { showToast('新密碼至少 4 碼','error'); return; }
+  try {
+    await api('changeMyPassword', { oldPassword:o, newPassword:n });
+    showToast('密碼已變更，請以新密碼重新登入','success');
+    setTimeout(() => document.getElementById('logoutBtn').click(), 1500);
+  } catch (e) {
+    showToast(e.message,'error');
+  }
+}
+
+//=========================================================================
 // Modal & Toast
 //=========================================================================
-function showModal({title, body, foot}){
+function showModal({ title, body, foot }) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = body;
   document.getElementById('modalFoot').innerHTML = foot;
   document.getElementById('modalMask').classList.add('show');
 }
-function closeModal(){ document.getElementById('modalMask').classList.remove('show'); }
-document.getElementById('modalMask').addEventListener('click', e => {
-  if(e.target.id==='modalMask') closeModal();
-});
-function showToast(msg, type=''){
+function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
+document.getElementById('modalMask').addEventListener('click', e => { if (e.target.id==='modalMask') closeModal(); });
+function showToast(msg, type='') {
   const t = document.createElement('div');
   t.className = 'toast ' + type;
   t.textContent = msg;
   document.getElementById('toastStack').appendChild(t);
-  setTimeout(()=>t.remove(), 2800);
+  setTimeout(() => t.remove(), 3200);
 }
 
 //=========================================================================
 // Helpers
 //=========================================================================
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+function escapeHtml(s) {
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 }
-function currentWeekId(d=new Date()){
-  // ISO 週次：YYYY-Www
+function currentWeekId(d=new Date()) {
   const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = dt.getUTCDay() || 7;
   dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
@@ -1134,22 +1324,16 @@ function currentWeekId(d=new Date()){
   const wk = Math.ceil(((dt - yearStart)/86400000 + 1)/7);
   return `${dt.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
 }
-function isEvenWeek(weekId){
+function isEvenWeek(weekId) {
   const wk = parseInt(weekId.split('W')[1] || '0', 10);
   return wk % 2 === 0;
 }
-function avgCycleDays(tasks){
+function avgCycleDays(tasks) {
   const completed = tasks.filter(t => t.status==='done' && t.createdAt && t.completedAt);
-  if(!completed.length) return '–';
+  if (!completed.length) return '–';
   const days = completed.reduce((sum,t) => sum + (new Date(t.completedAt) - new Date(t.createdAt))/86400000, 0) / completed.length;
   return days.toFixed(1);
 }
-
-//=========================================================================
-// Boot
-//=========================================================================
-saveDB();  // 確保檔案存在
-refreshLoginUsers();
 </script>
 </body>
 </html>
