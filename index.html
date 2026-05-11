@@ -298,6 +298,7 @@
 <!-- ===== App Shell ===== -->
 <div id="app">
   <div class="topbar">
+    <button class="topbar-btn" id="backBtn" title="回上一頁" style="font-size:15px;padding:6px 12px;">←</button>
     <span class="topbar-brand">⚔️ Kevin's Team Building</span>
     <span class="topbar-company" id="topCompany"></span>
     <span class="topbar-spacer"></span>
@@ -380,6 +381,10 @@ let loginCompany = 'fb';
 
 // Kanban 看板的篩選狀態（assignee 與 status 都用 '*' 代表全部）
 let kanbanFilter = { assignee: '*', status: '*' };
+
+// 頁面歷史堆疊（給回上一頁按鈕用）
+let pageHistory = [];
+let _navigatingBack = false;
 
 //=========================================================================
 // API client
@@ -610,6 +615,13 @@ function renderSideNav() {
   document.querySelectorAll('.sidenav-item').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
 }
 function go(page) {
+  // 維護頁面歷史（非「回上一頁」操作時才 push）
+  if (!_navigatingBack && pageHistory[pageHistory.length - 1] !== page) {
+    pageHistory.push(page);
+    if (pageHistory.length > 20) pageHistory.shift();
+  }
+  _navigatingBack = false;
+
   currentPage = page;
   document.querySelectorAll('.sidenav-item').forEach(b => b.classList.toggle('active', b.dataset.go===page));
   const m = document.getElementById('main');
@@ -622,7 +634,48 @@ function go(page) {
     ogsm:   renderOgsm,
     profile: renderProfile,
   }[page] || renderKanban)(m);
+  refreshBackBtnState();
 }
+
+function goBack() {
+  // 若 modal 開著 → 優先關 modal
+  const modal = document.getElementById('modalMask');
+  if (modal && modal.classList.contains('show')) {
+    closeModal();
+    return;
+  }
+  // 若 Kanban 有篩選 → 先清篩選（回到「全部」視角）
+  if (currentPage === 'kanban' && (kanbanFilter.assignee !== '*' || kanbanFilter.status !== '*')) {
+    kanbanFilter = { assignee:'*', status:'*' };
+    go('kanban');
+    return;
+  }
+  // 退到上一頁
+  if (pageHistory.length > 1) {
+    pageHistory.pop();
+    _navigatingBack = true;
+    go(pageHistory[pageHistory.length - 1]);
+  } else {
+    showToast('已在首頁', 'warn');
+  }
+}
+
+function refreshBackBtnState() {
+  const btn = document.getElementById('backBtn');
+  if (!btn) return;
+  const modal = document.getElementById('modalMask');
+  const hasModal = modal && modal.classList.contains('show');
+  const hasFilter = currentPage === 'kanban' && (kanbanFilter.assignee !== '*' || kanbanFilter.status !== '*');
+  const canBack = hasModal || hasFilter || pageHistory.length > 1;
+  btn.style.opacity = canBack ? '1' : '0.4';
+  btn.style.cursor = canBack ? 'pointer' : 'default';
+}
+document.getElementById('backBtn').addEventListener('click', goBack);
+// 鍵盤快捷鍵：Esc 或 Alt+← 回上一頁
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { goBack(); return; }
+  if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
+});
 document.getElementById('refreshBtn').addEventListener('click', async () => {
   try {
     STATE = await api('getInitData');
@@ -1553,8 +1606,12 @@ function showModal({ title, body, foot }) {
   document.getElementById('modalBody').innerHTML = body;
   document.getElementById('modalFoot').innerHTML = foot;
   document.getElementById('modalMask').classList.add('show');
+  refreshBackBtnState();
 }
-function closeModal() { document.getElementById('modalMask').classList.remove('show'); }
+function closeModal() {
+  document.getElementById('modalMask').classList.remove('show');
+  refreshBackBtnState();
+}
 document.getElementById('modalMask').addEventListener('click', e => { if (e.target.id==='modalMask') closeModal(); });
 function showToast(msg, type='') {
   const t = document.createElement('div');
