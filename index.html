@@ -135,6 +135,9 @@
   .task-card[data-priority="high"]{border-left-color:var(--accent);}
   .task-card[data-priority="med"]{border-left-color:var(--yellow);}
   .task-card[data-priority="low"]{border-left-color:var(--green);}
+  .task-card.is-parent{background:linear-gradient(135deg,#FFFFFF 0%,#F0F5FB 100%);border:1.5px solid #1F4E79;border-left-width:5px;}
+  .task-card.is-parent .task-title{color:#0F3454;font-weight:800;}
+  .task-card.is-child{background:#FAFBFC;border-left-style:dashed;opacity:.95;}
   .task-title{font-weight:700;font-size:13.5px;margin:0 0 6px;color:var(--gray-800);}
   .task-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:11px;color:var(--gray-500);}
   .task-tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-600);font-size:10px;font-weight:600;}
@@ -264,7 +267,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">Kevin's Team Building</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.3 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.4 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -330,7 +333,7 @@
 
 <script>
 //=========================================================================
-// Kevin's Team Building ・ v1.3 雲端版
+// Kevin's Team Building ・ v1.4 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -381,6 +384,9 @@ let loginCompany = 'fb';
 
 // Kanban 看板的篩選狀態（assignee 與 status 都用 '*' 代表全部）
 let kanbanFilter = { assignee: '*', status: '*' };
+
+// v1.4：Kanban 排序維度
+let kanbanSort = 'smart';   // smart | deadline | score | priority | delay | created
 
 // 頁面歷史堆疊（給回上一頁按鈕用）
 let pageHistory = [];
@@ -729,9 +735,25 @@ function renderKanban(m) {
   });
   const grouped = { plan:[], do:[], check:[], done:[], hold:[], failed:[] };
   filtered.forEach(t => { (grouped[t.status]||grouped.plan).push(t); });
-  Object.keys(grouped).forEach(k =>
-    grouped[k].sort((a,b)=>(b.priority==='high')-(a.priority==='high') || (a.deadline||'').localeCompare(b.deadline||''))
-  );
+
+  // v1.4：依排序維度排序每欄
+  const today = new Date().toISOString().slice(0,10);
+  const sortFn = getSortFn(kanbanSort, today);
+  Object.keys(grouped).forEach(k => grouped[k].sort(sortFn));
+
+  // v1.4：員工 tab 紅點 — 計算每位 assignee 的逾期任務數
+  const overdueByAssignee = {};
+  tasks.forEach(t => {
+    if (t.assignee && t.deadline && t.deadline < today && t.status !== 'done' && t.status !== 'failed') {
+      overdueByAssignee[t.assignee] = (overdueByAssignee[t.assignee] || 0) + 1;
+    }
+  });
+
+  // v1.4：員工自己登入時的警示
+  const myOverdue = me.isLord ? 0 : tasks.filter(t =>
+    t.assignee === me.username && t.deadline && t.deadline < today &&
+    t.status !== 'done' && t.status !== 'failed'
+  ).length;
 
   // 員工視角下的考績摘要
   const showPerf = (kanbanFilter.assignee !== '*') && isLeader;
@@ -748,17 +770,43 @@ function renderKanban(m) {
         ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
         <button class="btn btn-ghost" onclick="document.getElementById('refreshBtn').click()">🔄 重新整理</button>
         ${(kanbanFilter.assignee!=='*'||kanbanFilter.status!=='*')?`<button class="btn btn-ghost" onclick="resetKanbanFilter()">✕ 清除篩選</button>`:''}
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);">
+          📊 排序：
+          <select id="kanbanSortSel" style="padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;">
+            <option value="smart"    ${kanbanSort==='smart'?'selected':''}>🧠 智能（延誤+優先+分數）</option>
+            <option value="deadline" ${kanbanSort==='deadline'?'selected':''}>⏰ 截止日（近→遠）</option>
+            <option value="priority" ${kanbanSort==='priority'?'selected':''}>⚡ 優先級（高→低）</option>
+            <option value="score"    ${kanbanSort==='score'?'selected':''}>★ 任務分數（高→低）</option>
+            <option value="delay"    ${kanbanSort==='delay'?'selected':''}>🐢 延誤天數（多→少）</option>
+            <option value="created"  ${kanbanSort==='created'?'selected':''}>📅 創建日（新→舊）</option>
+          </select>
+        </label>
       </div>
     </div>
+
+    ${myOverdue > 0 ? `
+      <div style="background:#FEE2E2;border-left:4px solid #C00000;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">⚠️</span>
+        <div style="flex:1;">
+          <div style="font-weight:800;color:#991B1B;font-size:14px;">您有 ${myOverdue} 件逾期任務</div>
+          <div style="font-size:11px;color:#7C2D12;margin-top:2px;">請優先處理，必要時請告知主公延期原因</div>
+        </div>
+        <button class="btn btn-danger" onclick="kanbanFilter.assignee='*';kanbanFilter.status='*';kanbanSort='delay';go('kanban');">先看逾期</button>
+      </div>
+    ` : ''}
 
     ${isLeader ? `
       <div class="member-tabs">
         <button class="member-tab ${kanbanFilter.assignee==='*'?'active':''}" data-assignee="*">全部 <span class="badge">${tasks.length}</span></button>
-        ${assignees.map(a => `
+        ${assignees.map(a => {
+          const overdueCount = overdueByAssignee[a] || 0;
+          const redDot = overdueCount >= 3 ? '<span style="display:inline-block;width:8px;height:8px;background:#C00000;border-radius:50%;margin-left:4px;" title="連續延誤 '+overdueCount+' 件"></span>' : '';
+          return `
           <button class="member-tab ${kanbanFilter.assignee===a?'active':''}" data-assignee="${escapeHtml(a)}">
-            ${escapeHtml(a)} <span class="badge">${doneByAssignee[a]||0}</span>
+            ${escapeHtml(a)}${redDot} <span class="badge">${doneByAssignee[a]||0}</span>
           </button>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     ` : ''}
 
@@ -807,11 +855,46 @@ function renderKanban(m) {
     kanbanFilter.status = b.dataset.status;
     go('kanban');
   }));
+  const sortSel = document.getElementById('kanbanSortSel');
+  if (sortSel) sortSel.addEventListener('change', e => {
+    kanbanSort = e.target.value;
+    go('kanban');
+  });
 }
 
 function resetKanbanFilter() {
   kanbanFilter = { assignee:'*', status:'*' };
   go('kanban');
+}
+
+// v1.4：排序函式工廠
+function getSortFn(mode, today) {
+  const priorityRank = p => ({ high:0, med:1, low:2 }[p||'med']);
+  const score = t => (Number(t.complexity)||0) + (Number(t.techDifficulty)||0);
+  const delay = t => {
+    if (t.status === 'done' || t.status === 'failed' || !t.deadline) return 0;
+    if (t.deadline >= today) return 0;
+    return Math.round((new Date(today) - new Date(t.deadline)) / 86400000);
+  };
+  const smartScore = t => {
+    // 智能排序：延誤天數 × 10 + 優先級反序 × 5 + 任務分數 × 1
+    return delay(t) * 10 + (2 - priorityRank(t.priority)) * 5 + score(t);
+  };
+  switch(mode) {
+    case 'deadline':
+      return (a,b) => (a.deadline||'9999').localeCompare(b.deadline||'9999');
+    case 'score':
+      return (a,b) => score(b) - score(a);
+    case 'priority':
+      return (a,b) => priorityRank(a.priority) - priorityRank(b.priority);
+    case 'delay':
+      return (a,b) => delay(b) - delay(a);
+    case 'created':
+      return (a,b) => (b.createdAt||'').localeCompare(a.createdAt||'');
+    case 'smart':
+    default:
+      return (a,b) => smartScore(b) - smartScore(a);
+  }
 }
 
 // 計算單一員工的考績摘要
@@ -870,18 +953,81 @@ function taskCard(t) {
   const bonus      = Number(t.bonusPoints)||0;
   const taskScore  = complexity + techDiff;
   const showScore  = (complexity > 0 || techDiff > 0);
+
+  // v1.4：父子任務識別
+  const allTasks = STATE.tasks[currentCompany] || [];
+  const children = allTasks.filter(c => c.parentTaskId === t.id);
+  const isParent = children.length > 0 || t.isParent;
+  const isChild  = !!t.parentTaskId;
+  const parent   = isChild ? allTasks.find(p => p.id === t.parentTaskId) : null;
+  const doneChildren = children.filter(c => c.status === 'done').length;
+  const progressPct = children.length > 0 ? Math.round(doneChildren/children.length*100) : 0;
+
+  // v1.4：時效性自動標記
+  const timeliness = computeTimeliness(t);
+  const delayInfo = computeDelay(t, today);
+
   return `
-    <div class="task-card" data-id="${t.id}" data-priority="${t.priority||'med'}">
-      <div class="task-title">${escapeHtml(t.title)}</div>
+    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
+      ${isChild ? `<div style="font-size:9.5px;color:var(--gray-400);margin-bottom:2px;">↳ ${escapeHtml((parent&&parent.title)||'(已刪除父任務)')}</div>` : ''}
+      <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
         <span class="task-tag auth-${t.authLevel||'L2'}">${(AUTH[t.authLevel]||AUTH.L2).split(' ')[0]}${t.authLevel||'L2'}</span>
         <span class="task-tag">→${escapeHtml(t.assignee||'未指派')}</span>
         ${showScore?`<span class="task-tag" style="background:#EEF2FF;color:#3730A3;" title="複雜度${complexity} + 技術度${techDiff}">★${taskScore}</span>`:''}
         ${bonus!==0?`<span class="task-tag" style="background:${bonus>0?'var(--green-light)':'var(--orange-light)'};color:${bonus>0?'var(--green)':'var(--orange)'};">${bonus>0?'+':''}${bonus}</span>`:''}
-        ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}</span>`:''}
+        ${timeliness ? `<span class="task-tag" style="background:${timeliness.bg};color:${timeliness.color};">${timeliness.icon}</span>` : ''}
+        ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}${delayInfo.days>0?` (+${delayInfo.days}d)`:''}</span>`:''}
       </div>
+      ${isParent ? `
+        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--primary),var(--green));"></div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:var(--primary);">${doneChildren}/${children.length}</span>
+        </div>
+      ` : ''}
     </div>
   `;
+}
+
+// v1.4：計算任務時效性（done 任務才有）
+function computeTimeliness(t) {
+  if (t.status !== 'done') return null;
+  if (!t.deadline || !t.completedAt) return null;
+  const done = t.completedAt.slice(0,10);
+  if (done < t.deadline)  return { tag:'early',  icon:'🚀 提前', bg:'#DBEAFE', color:'#1F4E79' };
+  if (done === t.deadline) return { tag:'ontime', icon:'⏰ 準時', bg:'#FEF3C7', color:'#BF8F00' };
+  return                          { tag:'late',   icon:'🐢 延誤', bg:'#FEE2E2', color:'#991B1B' };
+}
+
+// v1.4：計算延誤天數（未完成且過了 deadline）
+function computeDelay(t, today) {
+  if (t.status === 'done' || t.status === 'failed') return { days:0 };
+  if (!t.deadline) return { days:0 };
+  if (t.deadline >= today) return { days:0 };
+  const d1 = new Date(t.deadline);
+  const d2 = new Date(today);
+  const days = Math.round((d2 - d1) / 86400000);
+  return { days };
+}
+
+// v1.4：計算建議分數（用於採用建議按鈕）
+function computeSuggestedBonus(t) {
+  const tm = computeTimeliness(t);
+  if (!tm) return null;
+  if (tm.tag === 'early')  return { points: 2,  reason: '🚀 提前完成 (+2)' };
+  if (tm.tag === 'ontime') return { points: 1,  reason: '⏰ 準時完成 (+1)' };
+  // 延誤：按天數加重，最多 -10
+  if (tm.tag === 'late') {
+    const done = new Date(t.completedAt.slice(0,10));
+    const deadline = new Date(t.deadline);
+    const days = Math.round((done - deadline) / 86400000);
+    const weeks = Math.ceil(days / 7);
+    const points = Math.max(-10, -2 * weeks);
+    return { points, reason: '🐢 延誤完成 ' + days + ' 天 (' + points + ')' };
+  }
+  return null;
 }
 
 function openTaskModal(id) {
@@ -896,10 +1042,23 @@ function openTaskModal(id) {
     creator:  me.username,
     priority:'med', authLevel:'L2', status:'plan',
     complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
+    parentTaskId: '', isParent: false, projectKPI: '',
     company: currentCompany,
     createdAt:'', notes:[]
   };
   const canScore = me.isLord || me.role === 'admin';
+  const canCreateParent = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+
+  // v1.4：找出本公司所有可作為「父任務」的候選（沒有 parentTaskId 的任務，且不是當前正在編輯的任務）
+  const allTasks = STATE.tasks[currentCompany] || [];
+  const parentCandidates = allTasks.filter(t =>
+    !t.parentTaskId && t.id !== data.id && t.status !== 'failed' && t.status !== 'done'
+  );
+  // 本任務的子任務（編輯既有父任務時顯示）
+  const childTasks = data.id ? allTasks.filter(t => t.parentTaskId === data.id) : [];
+  const hasChildren = childTasks.length > 0;
+  const isParentTask = hasChildren || data.isParent;
+  const isChildTask = !!data.parentTaskId;
 
   // 取得使用者列表（給 assignee 下拉用）
   // 主公 / admin 從 STATE.accounts；其餘成員退而求其次用 STATE.me.username 或既有任務的 assignee 集合
@@ -919,10 +1078,52 @@ function openTaskModal(id) {
   showModal({
     title: isNew?'新建任務卡':'任務卡詳情',
     body: `
+      ${(isParentTask || isChildTask) ? `
+        <div style="background:${isParentTask?'#1F4E79':'#FEF3C7'};color:${isParentTask?'white':'#7C2D12'};padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;">
+          ${isParentTask ? `📦 這是一張「專案父任務卡」 ・ 包含 ${childTasks.length} 個子任務（${childTasks.filter(t=>t.status==='done').length} 已完成）` : `↳ 這是「${escapeHtml(allTasks.find(t=>t.id===data.parentTaskId)?.title||'未知父任務')}」的子任務`}
+        </div>
+      ` : ''}
+
       <div class="field">
         <label class="field-label">① 任務名稱 <span class="req">*</span></label>
         <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="動詞開頭，一句話講清楚要做什麼">
       </div>
+
+      ${(canCreateParent && !hasChildren) ? `
+        <div class="field">
+          <label class="field-label">📦 父任務（選填）— 將本卡掛在某張專案卡底下</label>
+          <select class="field-select" id="f-parent">
+            <option value="">（無）作為頂層任務</option>
+            ${parentCandidates.map(t => `<option value="${escapeHtml(t.id)}" ${data.parentTaskId===t.id?'selected':''}>📦 ${escapeHtml(t.title)} ・ ${escapeHtml(t.assignee||'未指派')}</option>`).join('')}
+          </select>
+          <div class="field-hint">不選則為頂層任務；可作為頂層後續再新增子任務變成父任務</div>
+        </div>
+      ` : ''}
+
+      ${(canCreateParent && !isChildTask) ? `
+        <div class="field">
+          <label class="field-label">🎯 專案長期 KPI（選填，僅父任務適用）</label>
+          <input class="field-input" id="f-projectKPI" value="${escapeHtml(data.projectKPI||'')}" placeholder="一句話量化目標。例：6 個月內新店開幕、首月營收 ≥ X 萬">
+          <div class="field-hint">填寫此欄會自動把本卡標記為「專案父任務卡」，可在底下拆解子任務</div>
+        </div>
+      ` : ''}
+
+      ${hasChildren ? `
+        <div class="field">
+          <label class="field-label">📋 子任務列表（${childTasks.length} 項）</label>
+          <div style="background:var(--gray-50);border-radius:8px;padding:8px;max-height:200px;overflow-y:auto;">
+            ${childTasks.map(c => `
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--gray-200);font-size:12px;">
+                <span style="width:60px;font-size:10px;font-weight:700;color:${c.status==='done'?'var(--green)':c.status==='failed'?'var(--accent)':'var(--gray-500)'};">${(STATUS[c.status]||{}).label || c.status}</span>
+                <span style="flex:1;${c.status==='done'?'text-decoration:line-through;color:var(--gray-400);':''}">${escapeHtml(c.title)}</span>
+                <span style="font-size:10px;color:var(--gray-500);">${escapeHtml(c.assignee||'')}</span>
+                <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:10px;" onclick='closeModal();openTaskModal(${JSON.stringify(c.id)})'>開啟</button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="field-hint">子任務全部 ✅ 完成時、本父任務會自動推進為「完成」狀態</div>
+        </div>
+      ` : ''}
       <div class="field">
         <label class="field-label">② 為什麼（這件事服務的更大目標）</label>
         <textarea class="field-textarea" id="f-why" placeholder="讓接手者知道方向，遇到變化能自己取捨">${escapeHtml(data.why)}</textarea>
@@ -976,8 +1177,13 @@ function openTaskModal(id) {
 
       ${canScore ? `
         <div style="margin-top:18px;padding:14px 14px 4px;border:1.5px dashed var(--primary-light);border-radius:10px;background:#F8FAFC;">
-          <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:8px;">
-            🎯 主公評分（admin 限定）
+          <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+            <span>🎯 主公評分（admin 限定）</span>
+            ${(() => {
+              const sug = computeSuggestedBonus(data);
+              if (!sug) return '';
+              return `<button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--primary);border-color:var(--primary-light);" onclick="applySuggestedBonus(${sug.points}, '${sug.reason.replace(/'/g,"\\'")}')">採用建議：${sug.reason}</button>`;
+            })()}
           </div>
           <div class="field-row">
             <div class="field">
@@ -1060,6 +1266,14 @@ async function saveTask(id) {
     task.techDifficulty = Number(get('f-techDifficulty')) || 0;
     task.bonusPoints    = Number(get('f-bonusPoints')) || 0;
     task.bonusReason    = get('f-bonusReason');
+  }
+  // v1.4：父子任務欄位
+  if (document.getElementById('f-parent')) {
+    task.parentTaskId = get('f-parent');
+  }
+  if (document.getElementById('f-projectKPI')) {
+    task.projectKPI = get('f-projectKPI');
+    task.isParent   = !!task.projectKPI;  // 有寫 KPI 就是父任務
   }
   if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, text:newNote }];
 
@@ -1391,6 +1605,19 @@ function togglePwdInput(btn) {
   if (!inp) return;
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; btn.title = '隱藏密碼'; }
   else { inp.type = 'password'; btn.textContent = '👁'; btn.title = '顯示密碼'; }
+}
+
+// v1.4：採用建議分數，把建議分寫入 bonusPoints 與 bonusReason
+function applySuggestedBonus(points, reason) {
+  const bp = document.getElementById('f-bonusPoints');
+  const br = document.getElementById('f-bonusReason');
+  if (!bp || !br) { showToast('表單尚未開啟','warn'); return; }
+  // 找最接近的選項
+  const opts = Array.from(bp.options).map(o => Number(o.value));
+  const closest = opts.reduce((a,b) => Math.abs(b-points) < Math.abs(a-points) ? b : a);
+  bp.value = String(closest);
+  br.value = (br.value ? br.value + ' / ' : '') + reason;
+  showToast('已套用建議：' + reason + '（記得儲存）','success');
 }
 
 function togglePwdAll(btn) {
