@@ -267,7 +267,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">Kevin's Team Building</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.4 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.5 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -333,7 +333,7 @@
 
 <script>
 //=========================================================================
-// Kevin's Team Building ・ v1.4 雲端版
+// Kevin's Team Building ・ v1.5 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -580,7 +580,7 @@ function enterApp() {
   document.getElementById('login').classList.add('hidden');
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.add('show');
-  document.getElementById('topUser').textContent = STATE.me.username + (STATE.me.isLord?'（主公）':'') + '・' + roleLabel(STATE.me.role);
+  document.getElementById('topUser').textContent = STATE.me.username + (STATE.me.isLord?'（主公）':'') + '・' + roleLabel(STATE.me.role) + ((STATE.me.eligibleCompanies && STATE.me.eligibleCompanies.length>=2) ? '（可跨公司）' : '');
   renderTopCompany();
   renderSideNav();
   go('kanban');
@@ -590,17 +590,62 @@ function roleLabel(r) {
 }
 function renderTopCompany() {
   const el = document.getElementById('topCompany');
-  if (STATE.me.isLord) {
-    el.innerHTML = `<select id="lordCompanySwitch" style="background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:5px;color:white;padding:2px 6px;font-size:12px;">
-      ${COMPANY_KEYS.map(k => `<option value="${k}" ${currentCompany===k?'selected':''}>${COMPANY_LABEL[k]}</option>`).join('')}
+  const eligible = (STATE.me.eligibleCompanies && STATE.me.eligibleCompanies.length > 0)
+    ? STATE.me.eligibleCompanies
+    : [STATE.me.company];
+
+  // v1.5：lord 或可跨多家公司的 admin / manager 都顯示下拉
+  if (STATE.me.isLord || eligible.length >= 2) {
+    const options = (STATE.me.isLord ? COMPANY_KEYS : eligible)
+      .map(k => `<option value="${k}" ${currentCompany===k?'selected':''}>${COMPANY_LABEL[k]||k}</option>`)
+      .join('');
+    el.innerHTML = `<select id="lordCompanySwitch" title="切換公司視角" style="background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:5px;color:white;padding:2px 6px;font-size:12px;cursor:pointer;">
+      ${options}
     </select>`;
-    document.getElementById('lordCompanySwitch').addEventListener('change', e => {
-      currentCompany = e.target.value;
-      renderSideNav();
-      go(currentPage);
-    });
+    document.getElementById('lordCompanySwitch').addEventListener('change', onCompanySwitchChange);
   } else {
     el.textContent = COMPANY_LABEL[currentCompany];
+  }
+}
+
+// v1.5：公司切換 onChange handler
+async function onCompanySwitchChange(e) {
+  const target = e.target.value;
+  if (!target || target === currentCompany) return;
+
+  if (STATE.me.isLord) {
+    // lord 走後端切換，會發新 token（讓 audit_log 有紀錄）
+    try {
+      const r = await api('switchCompany', { newCompany: target });
+      TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+      STATE = await api('getInitData'); cacheState();
+      currentCompany = target;
+      renderSideNav();
+      renderTopCompany();
+      go(currentPage);
+      showToast('已切換至 ' + (COMPANY_LABEL[target]||target), 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+      e.target.value = currentCompany;
+    }
+    return;
+  }
+
+  // admin / manager：呼叫後端切換，換新 token
+  try {
+    const r = await api('switchCompany', { newCompany: target });
+    TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+    STATE = await api('getInitData'); cacheState();
+    currentCompany = r.user.company;
+    renderSideNav();
+    renderTopCompany();
+    document.getElementById('topUser').textContent =
+      STATE.me.username + '・' + roleLabel(STATE.me.role) + '（' + (COMPANY_LABEL[currentCompany]||currentCompany) + '）';
+    go(currentPage);
+    showToast('已切換至 ' + (COMPANY_LABEL[target]||target), 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+    e.target.value = currentCompany;
   }
 }
 function renderSideNav() {
