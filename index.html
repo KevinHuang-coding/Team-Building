@@ -52,7 +52,8 @@
     --shadow-lg:0 8px 24px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--bg-page);color:var(--gray-800);font-size:14px;line-height:1.55;transition:background-color .2s, color .2s;}
+  html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--bg-page);color:var(--gray-800);font-size:14px;line-height:1.55;transition:background-color .2s, color .2s;width:100%;max-width:100%;overflow-x:hidden;}
+  body{min-width:0;-webkit-text-size-adjust:100%;}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit;}
   input,textarea,select{font-family:inherit;font-size:14px;}
   textarea{resize:vertical;min-height:60px;}
@@ -175,7 +176,17 @@
   [data-theme="light"] .task-card.is-child, :root:not([data-theme]) .task-card.is-child{background:#FAFBFC;}
   .task-card.is-adhoc{border:1.5px solid #7C3AED;border-left-width:5px;}
   [data-theme="light"] .task-card.is-adhoc, :root:not([data-theme]) .task-card.is-adhoc{background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 100%);}
-  [data-theme="dark"] .task-card.is-adhoc{background:linear-gradient(135deg,#2D1B47 0%,#1F1430 100%);}
+  [data-theme="dark"] .task-card.is-adhoc{background:linear-gradient(135deg,#3B0764 0%,#1E1B4B 100%);border-color:#A78BFA;}
+  [data-theme="dark"] .task-card.is-adhoc .task-title{color:#EDE9FE;}
+  [data-theme="dark"] .task-card.is-adhoc .task-meta{color:#C4B5FD;}
+  [data-theme="dark"] .task-card.is-adhoc .task-tag{background:rgba(167,139,250,.25);color:#EDE9FE;border:1px solid rgba(167,139,250,.35);}
+  [data-theme="dark"] .task-card.is-adhoc .task-tag.auth-L1{background:rgba(110,231,183,.2);color:#A7F3D0;}
+  [data-theme="dark"] .task-card.is-adhoc .task-tag.auth-L2{background:rgba(252,211,77,.2);color:#FDE68A;}
+  [data-theme="dark"] .task-card.is-adhoc .task-tag.auth-L3{background:rgba(251,146,60,.2);color:#FED7AA;}
+  [data-theme="dark"] .task-card.is-adhoc .task-tag.auth-L4{background:rgba(252,165,165,.25);color:#FECACA;}
+  [data-theme="dark"] .task-card.is-adhoc .dispatch-date{background:rgba(255,255,255,.15);color:#EDE9FE;}
+  [data-theme="dark"] .task-card.is-adhoc .task-deadline{color:#C4B5FD;}
+  [data-theme="dark"] .task-card.is-adhoc .task-deadline.overdue{color:#FCA5A5;}
   .task-card.is-silent{box-shadow:0 0 0 2px #FCA5A5;animation:silentPulse 2.4s ease-in-out infinite;}
   @keyframes silentPulse{0%,100%{box-shadow:0 0 0 2px rgba(252,165,165,.5);}50%{box-shadow:0 0 0 4px rgba(252,165,165,.95);}}
   .task-card{position:relative;}
@@ -260,15 +271,40 @@
   /* ===== Mobile ===== */
   @media (max-width:768px){
     .layout{flex-direction:column;}
-    .sidenav{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--gray-200);padding:8px;gap:4px;flex-wrap:nowrap;}
+    .sidenav{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--gray-200);padding:8px;gap:4px;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
     .sidenav-item{flex-shrink:0;padding:8px 12px;font-size:12.5px;}
-    .main{padding:14px;}
-    .kanban{grid-template-columns:1fr;}
-    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .main{padding:12px;}
+    .kanban{grid-template-columns:1fr;gap:8px;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .stat-card{padding:12px;}
+    .stat-value{font-size:22px;}
     .field-row,.field-row-3{grid-template-columns:1fr;}
     .ogsm-row{grid-template-columns:1fr;gap:4px;}
     .ogsm-row.head{display:none;}
+    .topbar{padding:8px 10px;gap:6px;}
+    .topbar-brand{font-size:13px;letter-spacing:0;}
     .topbar-user{display:none;}
+    .topbar-company{font-size:11px;padding:3px 6px;}
+    .topbar-btn{padding:5px 8px;font-size:11px;}
+    .page-title{font-size:18px;}
+    .page-sub{font-size:12px;}
+    .modal-mask{padding:8px;}
+    .modal-head,.modal-body,.modal-foot{padding:12px 14px;}
+    .modal-title{font-size:15px;}
+    .member-tabs{padding:4px;gap:4px;-webkit-overflow-scrolling:touch;}
+    .member-tab{padding:5px 9px;font-size:11.5px;}
+    .status-pills{gap:4px;}
+    .status-pill{padding:4px 9px;font-size:11px;}
+    .perf-grid{grid-template-columns:repeat(2,1fr);}
+    .task-card{padding:10px;}
+    .dispatch-date{font-size:8.5px;top:6px;right:6px;}
+    /* 積分表小螢幕簡化欄位 */
+    #scoreboardTable, #scoreboardTable > div{grid-template-columns:40px 1.2fr 60px 60px 90px !important;}
+    #scoreboardTable .col-fail, #scoreboardTable .col-base, #scoreboardTable .col-collab, #scoreboardTable .col-bonus{display:none;}
+  }
+  @media (max-width:380px){
+    .stat-grid{grid-template-columns:1fr;}
+    .topbar-brand{display:none;}
   }
 
   .empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px;}
@@ -311,7 +347,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">Kevin's Team Building</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.6 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.7 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -378,7 +414,7 @@
 
 <script>
 //=========================================================================
-// Kevin's Team Building ・ v1.6 雲端版
+// Kevin's Team Building ・ v1.7 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -457,6 +493,9 @@ let kanbanFilter = { assignee: '*', status: '*' };
 
 // v1.4：Kanban 排序維度
 let kanbanSort = 'smart';   // smart | deadline | score | priority | delay | created
+
+// v1.7：積分表時間範圍
+let scoreboardRange = 'month';   // month | quarter | year | all
 
 // 頁面歷史堆疊（給回上一頁按鈕用）
 let pageHistory = [];
@@ -728,6 +767,7 @@ function renderSideNav() {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
   }
   if (STATE.me.isLord) items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表' });
+  if (STATE.me.isLord) items.push({ key:'scoreboard', icon:'🏆', label:'下屬積分表' });
   items.push({ key:'profile', icon:'👤', label:'我的設定' });
 
   document.getElementById('sidenav').innerHTML = items.map(it =>
@@ -753,6 +793,7 @@ function go(page) {
     pdca:   renderPdca,
     people: renderPeople,
     ogsm:   renderOgsm,
+    scoreboard: renderScoreboard,
     profile: renderProfile,
   }[page] || renderKanban)(m);
   refreshBackBtnState();
@@ -1100,7 +1141,8 @@ function taskCard(t) {
       <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
         <span class="task-tag auth-${t.authLevel||'L2'}">${(AUTH[t.authLevel]||AUTH.L2).split(' ')[0]}${t.authLevel||'L2'}</span>
-        <span class="task-tag">→${escapeHtml(t.assignee||'未指派')}</span>
+        <span class="task-tag" style="background:${(STATE.me && t.assignee===STATE.me.username)?'#DBEAFE':'var(--gray-100)'};color:${(STATE.me && t.assignee===STATE.me.username)?'#1F4E79':'var(--gray-600)'};">→${escapeHtml(t.assignee||'未指派')}${(STATE.me && t.assignee===STATE.me.username)?'（我）':''}</span>
+        ${(Array.isArray(t.collaborators) && t.collaborators.length>0) ? `<span class="task-tag" style="background:#F3E8FF;color:#6B21A8;" title="協作：${t.collaborators.map(escapeHtml).join('、')}">🤝 +${t.collaborators.length}${(STATE.me && t.collaborators.indexOf(STATE.me.username)>=0)?'（含我）':''}</span>` : ''}
         ${showScore?`<span class="task-tag" style="background:#EEF2FF;color:#3730A3;" title="複雜度${complexity} + 技術度${techDiff}">★${taskScore}</span>`:''}
         ${bonus!==0?`<span class="task-tag" style="background:${bonus>0?'var(--green-light)':'var(--orange-light)'};color:${bonus>0?'var(--green)':'var(--orange)'};">${bonus>0?'+':''}${bonus}</span>`:''}
         ${timeliness ? `<span class="task-tag" style="background:${timeliness.bg};color:${timeliness.color};">${timeliness.icon}</span>` : ''}
@@ -1172,6 +1214,7 @@ function openTaskModal(id) {
     complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
     parentTaskId: '', isParent: false, projectKPI: '',
     taskType: 'normal', attachments: [], statusHistory: [],
+    collaborators: [],
     company: currentCompany,
     createdAt:'', notes:[]
   };
@@ -1294,7 +1337,7 @@ function openTaskModal(id) {
       </div>
       <div class="field-row-3">
         <div class="field">
-          <label class="field-label">指派給</label>
+          <label class="field-label">主要負責人 <span class="req">*</span></label>
           <select class="field-select" id="f-assignee">
             <option value="">未指派</option>
             ${userList.map(u => `<option value="${escapeHtml(u)}" ${data.assignee===u?'selected':''}>${escapeHtml(u)}</option>`).join('')}
@@ -1313,6 +1356,20 @@ function openTaskModal(id) {
           </select>
         </div>
       </div>
+      <div class="field">
+        <label class="field-label">🤝 協作人員（可複選，與主負責人共扛責任）</label>
+        <div id="collabChips" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--gray-50);border-radius:8px;min-height:40px;">
+          ${userList.filter(u => u !== data.assignee).map(u => {
+            const checked = (data.collaborators||[]).indexOf(u) >= 0;
+            return `<label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:12px;background:${checked?'#DBEAFE':'white'};color:${checked?'#1F4E79':'var(--gray-600)'};border:1px solid ${checked?'#1F4E79':'var(--gray-200)'};font-weight:${checked?'700':'500'};">
+              <input type="checkbox" name="f-collaborator" value="${escapeHtml(u)}" ${checked?'checked':''} onchange="onCollabToggle(this)" style="margin:0;">
+              ${escapeHtml(u)}
+            </label>`;
+          }).join('')}
+        </div>
+        <div class="field-hint">協作者也能看到、編輯這張卡，並可寫進自己的週報。年度積分中協作者可獲得負責人 50% 的任務分數。</div>
+      </div>
+
       <div class="field">
         <label class="field-label">狀態（PDCA）</label>
         <select class="field-select" id="f-status">
@@ -1454,6 +1511,8 @@ async function saveTask(id) {
   // v1.6：任務類型 + 附檔
   const tt = document.querySelector('input[name="f-taskType"]:checked');
   if (tt) task.taskType = tt.value;
+  // v1.7：協作人員
+  task.collaborators = Array.from(document.querySelectorAll('input[name="f-collaborator"]:checked')).map(c => c.value);
   // 父任務 / 子任務的 type 由後端自動推斷，前端無需強制
   if (task.parentTaskId) task.taskType = 'subtask';
   if (task.isParent || task.projectKPI) task.taskType = 'project';
@@ -1793,6 +1852,22 @@ function togglePwdInput(btn) {
   else { inp.type = 'password'; btn.textContent = '👁'; btn.title = '顯示密碼'; }
 }
 
+// v1.7：協作人員 chip 切換樣式
+function onCollabToggle(input) {
+  const label = input.closest('label');
+  if (input.checked) {
+    label.style.background = '#DBEAFE';
+    label.style.color = '#1F4E79';
+    label.style.borderColor = '#1F4E79';
+    label.style.fontWeight = '700';
+  } else {
+    label.style.background = 'white';
+    label.style.color = 'var(--gray-600)';
+    label.style.borderColor = 'var(--gray-200)';
+    label.style.fontWeight = '500';
+  }
+}
+
 // v1.6：PDCA 儀表 stat-card 跳轉到 Kanban 過濾
 function jumpToKanban(status) {
   kanbanFilter = { assignee: kanbanFilter.assignee || '*', status };
@@ -2114,6 +2189,134 @@ function readOgsmRows(id, keys) {
     });
     return obj;
   }).filter(o => Object.values(o).some(v => v));
+}
+
+//=========================================================================
+// Scoreboard 積分表（主公限定）
+//=========================================================================
+function renderScoreboard(m) {
+  if (!STATE.me.isLord) {
+    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>積分表為主公限定</div>`;
+    return;
+  }
+  const company = currentCompany;
+  const allTasks = (STATE.tasks?.[company]) || [];
+
+  // 時間範圍過濾（依 completedAt 或 createdAt）
+  const now = new Date();
+  let cutoff = null;
+  if (scoreboardRange === 'month') cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+  else if (scoreboardRange === 'quarter') cutoff = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
+  else if (scoreboardRange === 'year') cutoff = new Date(now.getFullYear(), 0, 1);
+  const cutoffISO = cutoff ? cutoff.toISOString().slice(0,10) : '';
+
+  const inRange = t => {
+    if (!cutoffISO) return true;
+    const dt = (t.completedAt || t.createdAt || '').slice(0,10);
+    return dt >= cutoffISO;
+  };
+  const tasks = allTasks.filter(inRange);
+
+  // 計算每位成員的積分
+  // 規則：主負責人拿全分；協作者拿 50%
+  const accounts = (STATE.accounts && STATE.accounts[company]) || [];
+  const allMembers = new Set();
+  accounts.forEach(u => allMembers.add(u.username));
+  tasks.forEach(t => { if (t.assignee) allMembers.add(t.assignee); });
+
+  const stats = {};
+  allMembers.forEach(name => {
+    stats[name] = {
+      name, done:0, failed:0, total:0,
+      baseScore:0, failScore:0, bonusScore:0, totalScore:0,
+      collabDone:0, collabScore:0,   // 作為協作者得到的分數
+    };
+  });
+
+  tasks.forEach(t => {
+    const score = (Number(t.complexity)||0) + (Number(t.techDifficulty)||0);
+    const bonus = Number(t.bonusPoints)||0;
+    const main = t.assignee;
+    if (main && stats[main]) {
+      stats[main].total++;
+      if (t.status === 'done') {
+        stats[main].done++;
+        stats[main].baseScore += score;
+      } else if (t.status === 'failed') {
+        stats[main].failed++;
+        stats[main].failScore += score;
+      }
+      stats[main].bonusScore += bonus;
+    }
+    // 協作者拿 50%
+    if (Array.isArray(t.collaborators)) {
+      t.collaborators.forEach(c => {
+        if (!stats[c]) return;
+        if (t.status === 'done') {
+          stats[c].collabDone++;
+          stats[c].collabScore += Math.round(score * 0.5);
+        }
+      });
+    }
+  });
+  Object.values(stats).forEach(s => {
+    s.totalScore = s.baseScore - s.failScore + s.bonusScore + s.collabScore;
+  });
+
+  const ranked = Object.values(stats)
+    .filter(s => s.name && s.name !== 'Kevin執行長' && s.name !== '主公')
+    .sort((a,b) => b.totalScore - a.totalScore);
+
+  const medal = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '・';
+
+  const rangeLabel = {month:'本月', quarter:'本季', year:'本年', all:'全部'}[scoreboardRange];
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">🏆 下屬積分表</h2>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ ${rangeLabel} ・ 主公限定 ・ 本月最佳員工挑選依據</p>
+      <div class="page-actions" style="margin-top:10px;">
+        ${['month','quarter','year','all'].map(r => `
+          <button class="btn ${scoreboardRange===r?'btn-primary':'btn-ghost'}" onclick="scoreboardRange='${r}';go('scoreboard');">
+            ${ {month:'本月', quarter:'本季', year:'本年', all:'全部'}[r] }
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <details class="help-block">
+      <summary>💡 積分規則（軍師心法）</summary>
+      <div style="margin-top:6px;line-height:1.7;">
+        <b>基礎分</b>：每完成一張 Done 任務 = 複雜度 + 技術度（最高 5+5=10）<br>
+        <b>失敗扣分</b>：每張 Failed 任務扣 (複雜度 + 技術度) 分<br>
+        <b>主公加減分</b>：時效性建議分 + 主公手動微調（−10~+10）<br>
+        <b>協作貢獻</b>：被列為協作者的 Done 任務，獲得主負責人分數的 50%<br>
+        <b>總分公式 = 基礎分 − 失敗扣分 + 加減分 + 協作貢獻分</b>
+      </div>
+    </details>
+
+    ${ranked.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">📊</div>${rangeLabel}尚無資料</div>` : `
+    <div style="background:white;border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden;">
+      <div style="display:grid;grid-template-columns:50px 1.4fr 70px 70px 80px 80px 80px 100px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:.02em;">
+        <div>排名</div><div>下屬</div><div>完成</div><div>失敗</div><div>基礎分</div><div>協作分</div><div>加減</div><div style="text-align:right;">🏆 總分</div>
+      </div>
+      ${ranked.map((s,i) => {
+        const isTop3 = i < 3;
+        return `
+        <div style="display:grid;grid-template-columns:50px 1.4fr 70px 70px 80px 80px 80px 100px;padding:14px;border-top:1px solid var(--gray-100);font-size:13.5px;align-items:center;${isTop3?'background:linear-gradient(90deg,#FEF3C7 0%,transparent 60%);':''}">
+          <div style="font-size:20px;">${medal(i)}</div>
+          <div><b style="font-size:14px;">${escapeHtml(s.name)}</b><div style="font-size:10px;color:var(--gray-500);">${s.total} 件任務</div></div>
+          <div style="color:var(--green);font-weight:700;">${s.done}</div>
+          <div style="color:var(--accent);font-weight:${s.failed>0?'700':'400'};">${s.failed}</div>
+          <div style="color:var(--primary);">+${s.baseScore}</div>
+          <div style="color:#6B21A8;">+${s.collabScore}<div style="font-size:9px;color:var(--gray-400);">${s.collabDone}件</div></div>
+          <div style="color:${s.bonusScore<0?'var(--accent)':s.bonusScore>0?'var(--green)':'var(--gray-500)'};">${s.bonusScore>=0?'+':''}${s.bonusScore}</div>
+          <div style="text-align:right;font-size:20px;font-weight:800;color:${s.totalScore>=0?'var(--primary)':'var(--accent)'};">${s.totalScore>=0?'+':''}${s.totalScore}</div>
+        </div>
+      `;}).join('')}
+    </div>
+    `}
+  `;
 }
 
 //=========================================================================
