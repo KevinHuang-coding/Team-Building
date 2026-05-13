@@ -173,6 +173,15 @@
   [data-theme="dark"] .task-card.is-parent .task-title{color:#A7C2E8;}
   .task-card.is-child{background:var(--bg-card);border-left-style:dashed;opacity:.95;}
   [data-theme="light"] .task-card.is-child, :root:not([data-theme]) .task-card.is-child{background:#FAFBFC;}
+  .task-card.is-adhoc{border:1.5px solid #7C3AED;border-left-width:5px;}
+  [data-theme="light"] .task-card.is-adhoc, :root:not([data-theme]) .task-card.is-adhoc{background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 100%);}
+  [data-theme="dark"] .task-card.is-adhoc{background:linear-gradient(135deg,#2D1B47 0%,#1F1430 100%);}
+  .task-card.is-silent{box-shadow:0 0 0 2px #FCA5A5;animation:silentPulse 2.4s ease-in-out infinite;}
+  @keyframes silentPulse{0%,100%{box-shadow:0 0 0 2px rgba(252,165,165,.5);}50%{box-shadow:0 0 0 4px rgba(252,165,165,.95);}}
+  .task-card{position:relative;}
+  .dispatch-date{position:absolute;top:8px;right:10px;font-size:9px;font-weight:700;color:#6B7280;background:#F3F4F6;padding:2px 6px;border-radius:8px;letter-spacing:.02em;}
+  [data-theme="dark"] .dispatch-date{background:#374151;color:#D1D5DB;}
+  .task-card .task-title{padding-right:64px;}
   .task-title{font-weight:700;font-size:13.5px;margin:0 0 6px;color:var(--gray-800);}
   .task-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:11px;color:var(--gray-500);}
   .task-tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-600);font-size:10px;font-weight:600;}
@@ -397,6 +406,13 @@ const SCORE_LEVELS = {
 };
 const BONUS_LEVELS = [-10,-7,-5,-3,-1,0,1,3,5,7,10];
 const PRIORITY = { high:'高 ⚡', med:'中', low:'低' };
+const TASK_TYPE = {
+  normal:  { label:'📌 一般任務',   color:'var(--gray-600)' },
+  adhoc:   { label:'⚡ 機動任務',   color:'#7C3AED' },
+  project: { label:'📦 專案父任務', color:'var(--primary)' },
+  subtask: { label:'↳ 子任務',      color:'var(--gray-500)' },
+};
+const ADHOC_SILENT_DAYS = 3;  // 機動任務 N 天無活動 → 警示
 const AUTH = {
   L1: '🟢 L1 自決即報',
   L2: '🟡 L2 報備執行',
@@ -1067,8 +1083,19 @@ function taskCard(t) {
   const timeliness = computeTimeliness(t);
   const delayInfo = computeDelay(t, today);
 
+  // v1.6：機動任務與靜默警示
+  const isAdhoc = t.taskType === 'adhoc';
+  const lastAct = t.lastActivityAt || t.updatedAt || t.createdAt;
+  const silentDays = isAdhoc && lastAct ? Math.floor((new Date() - new Date(lastAct))/86400000) : 0;
+  const isSilent = isAdhoc && ['plan','do','check','hold'].indexOf(t.status)>=0 && silentDays >= ADHOC_SILENT_DAYS;
+
+  // v1.6：派發日期（距今天數）
+  const createdShort = (t.createdAt||'').slice(5,10).replace('-','/');
+  const ageDays = t.createdAt ? Math.floor((new Date() - new Date(t.createdAt))/86400000) : 0;
+
   return `
-    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
+    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSilent?'is-silent':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
+      ${t.createdAt ? `<div class="dispatch-date" title="任務派發日 ・ 距今 ${ageDays} 天">📅 ${createdShort}</div>` : ''}
       ${isChild ? `<div style="font-size:9.5px;color:var(--gray-400);margin-bottom:2px;">↳ ${escapeHtml((parent&&parent.title)||'(已刪除父任務)')}</div>` : ''}
       <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
@@ -1087,6 +1114,7 @@ function taskCard(t) {
           <span style="font-size:10px;font-weight:700;color:var(--primary);">${doneChildren}/${children.length}</span>
         </div>
       ` : ''}
+      ${isSilent ? `<div style="margin-top:6px;font-size:10px;color:#991B1B;font-weight:700;">⏳ 機動任務 ${silentDays} 天無進度，請確認是否被遺忘</div>` : ''}
     </div>
   `;
 }
@@ -1143,11 +1171,14 @@ function openTaskModal(id) {
     priority:'med', authLevel:'L2', status:'plan',
     complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
     parentTaskId: '', isParent: false, projectKPI: '',
+    taskType: 'normal', attachments: [], statusHistory: [],
     company: currentCompany,
     createdAt:'', notes:[]
   };
   const canScore = me.isLord || me.role === 'admin';
   const canCreateParent = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+  // v1.6：初始化附檔暫存
+  window._pendingAttachments = (data.attachments || []).slice();
 
   // v1.4：找出本公司所有可作為「父任務」的候選（沒有 parentTaskId 的任務，且不是當前正在編輯的任務）
   const allTasks = STATE.tasks[currentCompany] || [];
@@ -1197,6 +1228,21 @@ function openTaskModal(id) {
             ${parentCandidates.map(t => `<option value="${escapeHtml(t.id)}" ${data.parentTaskId===t.id?'selected':''}>📦 ${escapeHtml(t.title)} ・ ${escapeHtml(t.assignee||'未指派')}</option>`).join('')}
           </select>
           <div class="field-hint">不選則為頂層任務；可作為頂層後續再新增子任務變成父任務</div>
+        </div>
+      ` : ''}
+
+      ${(!isChildTask && !hasChildren) ? `
+        <div class="field">
+          <label class="field-label">任務類型</label>
+          <div style="display:flex;gap:8px;">
+            <label style="flex:1;cursor:pointer;border:1.5px solid ${data.taskType!=='adhoc'?'var(--primary)':'var(--gray-200)'};background:${data.taskType!=='adhoc'?'var(--primary-light)':'white'};border-radius:8px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;">
+              <input type="radio" name="f-taskType" value="normal" ${data.taskType!=='adhoc'?'checked':''}> 📌 一般任務 <span style="font-size:10px;color:var(--gray-500);">（規劃性、有明確 deadline）</span>
+            </label>
+            <label style="flex:1;cursor:pointer;border:1.5px solid ${data.taskType==='adhoc'?'#7C3AED':'var(--gray-200)'};background:${data.taskType==='adhoc'?'#F3E8FF':'white'};border-radius:8px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;">
+              <input type="radio" name="f-taskType" value="adhoc" ${data.taskType==='adhoc'?'checked':''}> ⚡ 機動任務 <span style="font-size:10px;color:var(--gray-500);">（零碎但容易遺忘）</span>
+            </label>
+          </div>
+          <div class="field-hint">機動任務在 ${ADHOC_SILENT_DAYS} 天無活動會自動發出警示，避免被遺忘</div>
         </div>
       ` : ''}
 
@@ -1320,12 +1366,40 @@ function openTaskModal(id) {
           })()}</div>
         </div>
       ` : ''}
+      <!-- v1.6：照片附檔 -->
+      <div class="field">
+        <label class="field-label">📎 附加照片（最多 5 張，自動縮圖至 ≤ 800px）</label>
+        <div id="attachThumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          ${(data.attachments||[]).map((a,i)=>`
+            <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--gray-200);background:#F3F4F6;">
+              <img src="${a.dataUrl||a.url||''}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open(this.src)" alt="${escapeHtml(a.name||'')}">
+              <button type="button" onclick="removeAttachment(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">×</button>
+            </div>
+          `).join('')}
+        </div>
+        <label class="btn btn-ghost" style="cursor:pointer;display:inline-block;">
+          📷 選擇照片
+          <input type="file" id="f-photo" accept="image/*" multiple style="display:none;" onchange="handlePhotoUpload(event)">
+        </label>
+        <div class="field-hint" id="attachHint">每張上限 ~50KB，超過自動壓縮</div>
+      </div>
+
       ${data.notes && data.notes.length ? `
       <div class="field">
         <label class="field-label">進度紀錄</label>
         <div style="background:var(--gray-50);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gray-700);max-height:140px;overflow-y:auto;">
           ${data.notes.map(n => `<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${(n.at||'').slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
         </div>
+      </div>` : ''}
+
+      <!-- v1.6：任務時間軸 -->
+      ${(data.id && (data.statusHistory||[]).length>0) ? `
+      <div class="field">
+        <label class="field-label">📜 任務時間軸（${(data.statusHistory||[]).length} 個事件）</label>
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--gray-700);max-height:200px;overflow-y:auto;">
+          ${renderTaskTimeline(data)}
+        </div>
+        <div class="field-hint">用這個時間軸看下屬的工作節奏——是分散規劃還是臨時抱佛腳</div>
       </div>` : ''}
       <div class="field">
         <label class="field-label">新增進度／回報（可留空）</label>
@@ -1335,6 +1409,8 @@ function openTaskModal(id) {
     `,
     foot: `
       ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
+      ${(!isNew && (me.isLord || me.role==='admin' || data.assignee===me.username || data.creator===me.username)) ?
+        `<button class="btn btn-ghost" onclick="appendTaskToReport('${data.id}')" title="把本任務整理到我的本週週報">✏️ 加入本週週報</button>` : ''}
       <span style="flex:1;"></span>
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
       ${canEdit ? `<button class="btn btn-primary" onclick='saveTask(${isNew?'null':JSON.stringify(data.id)})'>${isNew?'建立任務':'儲存變更'}</button>` : '<span style="color:var(--gray-400);font-size:12px;align-self:center;">您僅可檢視</span>'}
@@ -1373,7 +1449,17 @@ async function saveTask(id) {
   }
   if (document.getElementById('f-projectKPI')) {
     task.projectKPI = get('f-projectKPI');
-    task.isParent   = !!task.projectKPI;  // 有寫 KPI 就是父任務
+    task.isParent   = !!task.projectKPI;
+  }
+  // v1.6：任務類型 + 附檔
+  const tt = document.querySelector('input[name="f-taskType"]:checked');
+  if (tt) task.taskType = tt.value;
+  // 父任務 / 子任務的 type 由後端自動推斷，前端無需強制
+  if (task.parentTaskId) task.taskType = 'subtask';
+  if (task.isParent || task.projectKPI) task.taskType = 'project';
+  // 附檔資料（在 step 3 補上）
+  if (window._pendingAttachments) {
+    task.attachments = window._pendingAttachments;
   }
   if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, text:newNote }];
 
@@ -1535,7 +1621,7 @@ async function saveReport(withOneOnOne) {
 function renderPdca(m) {
   const tasks = (STATE.tasks?.[currentCompany]) || [];
   const today = new Date().toISOString().slice(0,10);
-  const counts = {plan:0,do:0,check:0,done:0,hold:0};
+  const counts = {plan:0,do:0,check:0,done:0,hold:0,failed:0};
   tasks.forEach(t => counts[t.status] = (counts[t.status]||0)+1);
   const total = tasks.length;
   const overdue = tasks.filter(t => t.deadline && t.deadline < today && t.status!=='done').length;
@@ -1556,17 +1642,17 @@ function renderPdca(m) {
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card plan"><div class="stat-label">📋 Plan 計畫</div><div class="stat-value">${counts.plan}</div><div class="stat-sub">尚未啟動</div></div>
-      <div class="stat-card do"><div class="stat-label">🚀 Do 執行</div><div class="stat-value">${counts.do}</div><div class="stat-sub">進行中</div></div>
-      <div class="stat-card check"><div class="stat-label">🔍 Check 檢視</div><div class="stat-value">${counts.check}</div><div class="stat-sub">待驗收</div></div>
-      <div class="stat-card done"><div class="stat-label">✅ Act 完成</div><div class="stat-value">${counts.done}</div><div class="stat-sub">完成率 ${completionRate}%</div></div>
+      <div class="stat-card plan" style="cursor:pointer;" onclick="jumpToKanban('plan')" title="點擊查看所有 Plan 狀態任務"><div class="stat-label">📋 Plan 計畫</div><div class="stat-value">${counts.plan}</div><div class="stat-sub">尚未啟動 ・ 點擊查看 →</div></div>
+      <div class="stat-card do" style="cursor:pointer;" onclick="jumpToKanban('do')" title="點擊查看所有 Do 狀態任務"><div class="stat-label">🚀 Do 執行</div><div class="stat-value">${counts.do}</div><div class="stat-sub">進行中 ・ 點擊查看 →</div></div>
+      <div class="stat-card check" style="cursor:pointer;" onclick="jumpToKanban('check')" title="點擊查看所有 Check 狀態任務"><div class="stat-label">🔍 Check 檢視</div><div class="stat-value">${counts.check}</div><div class="stat-sub">待驗收 ・ 點擊查看 →</div></div>
+      <div class="stat-card done" style="cursor:pointer;" onclick="jumpToKanban('done')" title="點擊查看所有 Done 任務"><div class="stat-label">✅ Act 完成</div><div class="stat-value">${counts.done}</div><div class="stat-sub">完成率 ${completionRate}% ・ 點擊查看 →</div></div>
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card" style="border-top:3px solid var(--accent);"><div class="stat-label">⛔ Hold 卡關</div><div class="stat-value" style="color:${counts.hold>0?'var(--accent)':''}">${counts.hold}</div><div class="stat-sub">需主公介入</div></div>
-      <div class="stat-card" style="border-top:3px solid var(--accent);"><div class="stat-label">⏰ 已逾期</div><div class="stat-value" style="color:${overdue>0?'var(--accent)':''}">${overdue}</div><div class="stat-sub">${overdue>0?'需立即處理':'良好'}</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToKanban('hold')" title="點擊查看所有 Hold 狀態任務"><div class="stat-label">⛔ Hold 卡關</div><div class="stat-value" style="color:${counts.hold>0?'var(--accent)':''}">${counts.hold}</div><div class="stat-sub">需主公介入 ・ 點擊 →</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToKanban('failed')" title="點擊查看所有 Failed 任務"><div class="stat-label">❌ Failed 失敗</div><div class="stat-value" style="color:${counts.failed>0?'var(--accent)':''}">${counts.failed||0}</div><div class="stat-sub">扣分任務 ・ 點擊 →</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToOverdue()" title="點擊查看所有逾期任務"><div class="stat-label">⏰ 已逾期</div><div class="stat-value" style="color:${overdue>0?'var(--accent)':''}">${overdue}</div><div class="stat-sub">${overdue>0?'立即處理 →':'良好'}</div></div>
       <div class="stat-card"><div class="stat-label">⏱ 平均週期</div><div class="stat-value">${avgCycle}<span style="font-size:14px;color:var(--gray-500);"> 天</span></div><div class="stat-sub">建立→完成</div></div>
-      <div class="stat-card"><div class="stat-label">📈 完成率</div><div class="stat-value">${completionRate}<span style="font-size:14px;color:var(--gray-500);">%</span></div><div class="stat-sub">已完成 / 總數</div></div>
     </div>
 
     <div class="pdca-flow">
@@ -1705,6 +1791,176 @@ function togglePwdInput(btn) {
   if (!inp) return;
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; btn.title = '隱藏密碼'; }
   else { inp.type = 'password'; btn.textContent = '👁'; btn.title = '顯示密碼'; }
+}
+
+// v1.6：PDCA 儀表 stat-card 跳轉到 Kanban 過濾
+function jumpToKanban(status) {
+  kanbanFilter = { assignee: kanbanFilter.assignee || '*', status };
+  go('kanban');
+}
+function jumpToOverdue() {
+  kanbanFilter = { assignee: kanbanFilter.assignee || '*', status: '*' };
+  kanbanSort = 'delay';
+  go('kanban');
+  setTimeout(()=>showToast('已依「延誤天數」排序，逾期任務排最上面','warn'), 200);
+}
+
+// v1.6：渲染任務時間軸（合併 statusHistory + notes，按時間排序）
+function renderTaskTimeline(task) {
+  const events = [];
+  // 建立事件
+  events.push({
+    at: task.createdAt || '',
+    by: task.creator || '',
+    type: 'created',
+    text: '🎬 任務建立 ・ 派發給 ' + (task.assignee || '未指派'),
+  });
+  // 狀態變更事件
+  (task.statusHistory||[]).forEach((h, i) => {
+    if (i === 0 && !h.fromStatus) return;  // 跳過種子的第一筆（已由 created 涵蓋）
+    const from = (STATUS[h.fromStatus]||{}).label || h.fromStatus || '(無)';
+    const to = (STATUS[h.toStatus]||{}).label || h.toStatus;
+    events.push({
+      at: h.at, by: h.by, type: 'status',
+      text: '🔄 ' + from + ' → ' + to,
+    });
+  });
+  // 進度紀錄事件
+  (task.notes||[]).forEach(n => {
+    events.push({
+      at: n.at, by: n.by, type: 'note',
+      text: '💬 ' + (n.text || ''),
+    });
+  });
+  // 排序
+  events.sort((a,b) => (a.at||'').localeCompare(b.at||''));
+
+  // 計算間隔（看是不是「臨時抱佛腳」）
+  const dates = events.map(e => (e.at||'').slice(0,10)).filter(Boolean);
+  const uniqueDates = Array.from(new Set(dates));
+  const activeDays = uniqueDates.length;
+  const totalDays = task.createdAt && task.completedAt
+    ? Math.max(1, Math.round((new Date(task.completedAt) - new Date(task.createdAt))/86400000))
+    : (task.createdAt
+       ? Math.max(1, Math.round((new Date() - new Date(task.createdAt))/86400000))
+       : 1);
+  const engagementPct = Math.round(activeDays/totalDays*100);
+  const engagementLabel = engagementPct >= 60 ? '🟢 持續投入'
+                        : engagementPct >= 30 ? '🟡 階段性投入'
+                        : '🔴 臨時抱佛腳傾向';
+
+  return `
+    <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;font-size:11px;color:var(--gray-600);">
+      <b>工作節奏觀察</b>：${totalDays} 天內有活動的天數 = ${activeDays} 天（${engagementPct}%）　${engagementLabel}
+    </div>
+    ${events.map(ev => `
+      <div style="padding:5px 0;border-bottom:1px dashed var(--gray-200);">
+        <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${(ev.at||'').slice(0,16).replace('T',' ')}</span>
+        <span style="color:var(--gray-500);margin-left:6px;">${escapeHtml(ev.by||'')}</span>
+        <div style="margin-top:2px;">${escapeHtml(ev.text)}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// v1.6：一鍵把任務加入本週週報
+async function appendTaskToReport(taskId) {
+  try {
+    const r = await api('appendTaskToReport', { taskId });
+    showToast('已加入本週週報的「' + (r.field==='done'?'本週完成':r.field==='nextWeek'?'下週重點':'卡關／風險') + '」欄', 'success');
+    STATE = await api('getInitData'); cacheState();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// v1.6：照片附檔（縮圖 + base64）
+function openTaskModalWithAttachInit(currentAttach) {
+  window._pendingAttachments = (currentAttach || []).slice();
+}
+
+async function handlePhotoUpload(e) {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const current = window._pendingAttachments || [];
+  if (current.length + files.length > 5) {
+    showToast('每張任務最多 5 張附檔','warn');
+    return;
+  }
+  const me = STATE.me.username;
+  showToast('處理中…','');
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      showToast('請選擇圖片檔案：' + file.name, 'error');
+      continue;
+    }
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 800, 0.7);
+      current.push({
+        type: 'image',
+        name: file.name,
+        dataUrl,
+        size: dataUrl.length,
+        addedAt: new Date().toISOString(),
+        addedBy: me,
+      });
+    } catch (err) {
+      showToast('圖片處理失敗：' + err.message, 'error');
+    }
+  }
+  window._pendingAttachments = current;
+  e.target.value = '';   // 清空 input 才能再選同名檔
+  // 重新繪製縮圖區
+  renderAttachThumbs();
+  showToast('已加入 ' + files.length + ' 張，記得「儲存變更」','success');
+}
+
+function removeAttachment(idx) {
+  const arr = window._pendingAttachments || [];
+  arr.splice(idx, 1);
+  window._pendingAttachments = arr;
+  renderAttachThumbs();
+}
+
+function renderAttachThumbs() {
+  const el = document.getElementById('attachThumbs');
+  if (!el) return;
+  const arr = window._pendingAttachments || [];
+  el.innerHTML = arr.map((a,i)=>`
+    <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--gray-200);background:#F3F4F6;">
+      <img src="${a.dataUrl||a.url||''}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="window.open(this.src)" alt="${escapeHtml(a.name||'')}">
+      <button type="button" onclick="removeAttachment(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;">×</button>
+    </div>
+  `).join('');
+  const hint = document.getElementById('attachHint');
+  if (hint) {
+    const totalKB = Math.round(arr.reduce((s,a)=>s+(a.size||0),0)/1024);
+    hint.textContent = `已附 ${arr.length}/5 張 ・ 約 ${totalKB} KB`;
+  }
+}
+
+// 用 Canvas 把圖片縮到 maxWidth，回傳 base64 dataUrl
+function resizeImageToDataUrl(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('影像解碼失敗'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('讀取檔案失敗'));
+    reader.readAsDataURL(file);
+  });
 }
 
 // v1.4：採用建議分數，把建議分寫入 bonusPoints 與 bonusReason
