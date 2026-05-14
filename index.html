@@ -468,18 +468,23 @@
     <div id="loginPinSection" class="pin-section" style="display:none;">
       <div class="pin-greet" id="pinGreet">👋 請輸入驗證碼</div>
       <div class="pin-dots" id="pinDots">
-        ${Array.from({length:6}).map(()=>'<div class="pin-dot"></div>').join('')}
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
       </div>
       <div class="pin-label">請輸入 6 位數驗證碼</div>
       <div class="pin-error" id="pinError"></div>
       <div class="pin-keypad" id="pinKeypad">
-        ${[
-          {n:'1',sub:''},      {n:'2',sub:'ABC'},   {n:'3',sub:'DEF'},
-          {n:'4',sub:'GHI'},   {n:'5',sub:'JKL'},   {n:'6',sub:'MNO'},
-          {n:'7',sub:'PQRS'},  {n:'8',sub:'TUV'},   {n:'9',sub:'WXYZ'},
-        ].map(k => `<button class="pin-key" type="button" data-digit="${k.n}">${k.n}<div class="pin-key-sub">${k.sub}</div></button>`).join('')}
+        <button class="pin-key" type="button" data-digit="1">1<div class="pin-key-sub">&nbsp;</div></button>
+        <button class="pin-key" type="button" data-digit="2">2<div class="pin-key-sub">ABC</div></button>
+        <button class="pin-key" type="button" data-digit="3">3<div class="pin-key-sub">DEF</div></button>
+        <button class="pin-key" type="button" data-digit="4">4<div class="pin-key-sub">GHI</div></button>
+        <button class="pin-key" type="button" data-digit="5">5<div class="pin-key-sub">JKL</div></button>
+        <button class="pin-key" type="button" data-digit="6">6<div class="pin-key-sub">MNO</div></button>
+        <button class="pin-key" type="button" data-digit="7">7<div class="pin-key-sub">PQRS</div></button>
+        <button class="pin-key" type="button" data-digit="8">8<div class="pin-key-sub">TUV</div></button>
+        <button class="pin-key" type="button" data-digit="9">9<div class="pin-key-sub">WXYZ</div></button>
         <button class="pin-key pin-key-empty" type="button"></button>
-        <button class="pin-key" type="button" data-digit="0">0</button>
+        <button class="pin-key" type="button" data-digit="0">0<div class="pin-key-sub">&nbsp;</div></button>
         <button class="pin-key pin-back" type="button" data-back="1" title="退格">⌫</button>
       </div>
       <span class="pin-back-link" id="pinBackLink">← 切換帳號</span>
