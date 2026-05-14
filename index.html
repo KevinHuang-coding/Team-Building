@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kevin's Team Building</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F4E79'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EK%3C/text%3E%3C/svg%3E">
+<title>任務卡佈告欄</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F4E79'/%3E%3Ctext x='32' y='44' font-size='32' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold' font-size='28'%3E任務%3C/text%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
   :root{
@@ -392,6 +392,29 @@
 
   .conn-banner{background:var(--yellow-light);border-bottom:1px solid var(--yellow);padding:6px 14px;font-size:12px;color:var(--gray-700);text-align:center;}
 
+  /* ===== v1.8 iPhone 風格 PIN 鍵盤 ===== */
+  .pin-section{padding:8px 0 4px;}
+  .pin-greet{text-align:center;font-size:14px;color:var(--gray-700);margin-bottom:14px;font-weight:600;}
+  .pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:10px;}
+  .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--gray-400);background:transparent;transition:all .15s ease;}
+  .pin-dot.filled{background:var(--primary);border-color:var(--primary);transform:scale(1.1);}
+  .pin-dot.shake{animation:pinShake .35s ease;}
+  @keyframes pinShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+  .pin-label{text-align:center;font-size:11.5px;color:var(--gray-500);margin-bottom:14px;}
+  .pin-error{text-align:center;font-size:12px;color:var(--accent);min-height:16px;margin-bottom:6px;font-weight:600;}
+  .pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:300px;margin:0 auto;}
+  .pin-key{aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.85);color:#1F4E79;font-size:24px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:all .1s ease;border:none;line-height:1;-webkit-tap-highlight-color:transparent;}
+  [data-theme="dark"] .pin-key{background:rgba(255,255,255,.12);color:#F1F5F9;}
+  .pin-key:active{transform:scale(.92);background:rgba(255,255,255,.6);}
+  [data-theme="dark"] .pin-key:active{background:rgba(255,255,255,.25);}
+  .pin-key-sub{font-size:9px;font-weight:600;letter-spacing:.12em;color:var(--gray-500);margin-top:2px;}
+  [data-theme="dark"] .pin-key-sub{color:rgba(255,255,255,.55);}
+  .pin-key.pin-back{background:transparent;font-size:22px;}
+  [data-theme="dark"] .pin-key.pin-back{background:transparent;}
+  .pin-key-empty{visibility:hidden;}
+  .pin-back-link{display:block;text-align:center;font-size:12px;color:var(--gray-500);margin-top:18px;cursor:pointer;}
+  .pin-back-link:hover{color:var(--primary);}
+
   /* ===== Password input with eye toggle ===== */
   .pwd-wrap{position:relative;}
   .pwd-wrap input{padding-right:42px!important;}
@@ -405,13 +428,13 @@
 <!-- ===== Setup Screen ===== -->
 <div id="setup" class="center-wrap hidden">
   <div class="center-card">
-    <h1 class="center-title">Kevin's Team Building</h1>
+    <h1 class="center-title">任務卡佈告欄</h1>
     <p class="center-sub">初始化 ・ 首次使用需設定後端 API 網址</p>
 
     <div class="form-group">
       <label class="form-label">Apps Script Web App URL</label>
       <input class="form-input" type="text" id="setupUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
-      <div class="field-hint" style="margin-top:6px;">由主公部署 Code.gs 後取得，請見《部署指引》。</div>
+      <div class="field-hint" style="margin-top:6px;">由系統管理者部署 Code.gs 後取得，請見《部署指引》。</div>
     </div>
 
     <button class="login-btn" id="setupBtn">測試連線並儲存</button>
@@ -422,8 +445,8 @@
 <!-- ===== Login Screen ===== -->
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
-    <h1 class="center-title">Kevin's Team Building</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.7.2 雲端版</p>
+    <h1 class="center-title">任務卡佈告欄</h1>
+    <p class="center-sub">Three-Company Hub ・ v1.8 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -431,24 +454,39 @@
       <button class="company-tab" data-company="npw">凱文南坡萬</button>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">使用者</label>
-      <select class="form-select" id="loginUser"></select>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">密碼</label>
-      <div class="pwd-wrap">
-        <input class="form-input" type="password" id="loginPwd" placeholder="輸入密碼" autocomplete="off">
-        <button type="button" class="pwd-eye" onclick="togglePwdInput(this)" title="顯示密碼">👁</button>
+    <!-- 使用者選擇區 -->
+    <div id="loginUserSection">
+      <div class="form-group">
+        <label class="form-label">使用者</label>
+        <select class="form-select" id="loginUser"></select>
       </div>
+      <button class="login-btn" id="loginPickUserBtn">下一步</button>
+      <div class="err-msg" id="loginError"></div>
     </div>
 
-    <button class="login-btn" id="loginBtn">登入</button>
-    <div class="err-msg" id="loginError"></div>
+    <!-- PIN 鍵盤區（選好使用者後顯示） -->
+    <div id="loginPinSection" class="pin-section" style="display:none;">
+      <div class="pin-greet" id="pinGreet">👋 請輸入驗證碼</div>
+      <div class="pin-dots" id="pinDots">
+        ${Array.from({length:6}).map(()=>'<div class="pin-dot"></div>').join('')}
+      </div>
+      <div class="pin-label">請輸入 6 位數驗證碼</div>
+      <div class="pin-error" id="pinError"></div>
+      <div class="pin-keypad" id="pinKeypad">
+        ${[
+          {n:'1',sub:''},      {n:'2',sub:'ABC'},   {n:'3',sub:'DEF'},
+          {n:'4',sub:'GHI'},   {n:'5',sub:'JKL'},   {n:'6',sub:'MNO'},
+          {n:'7',sub:'PQRS'},  {n:'8',sub:'TUV'},   {n:'9',sub:'WXYZ'},
+        ].map(k => `<button class="pin-key" type="button" data-digit="${k.n}">${k.n}<div class="pin-key-sub">${k.sub}</div></button>`).join('')}
+        <button class="pin-key pin-key-empty" type="button"></button>
+        <button class="pin-key" type="button" data-digit="0">0</button>
+        <button class="pin-key pin-back" type="button" data-back="1" title="退格">⌫</button>
+      </div>
+      <span class="pin-back-link" id="pinBackLink">← 切換帳號</span>
+    </div>
 
     <div class="login-divider"><span>OR</span></div>
-    <button class="lord-btn" id="lordBtn">⚔️ 主公專屬登入（跨公司 + OGSM）</button>
+    <button class="lord-btn" id="lordBtn">⚔️ Kevin執行長 跨公司登入（含 OGSM）</button>
 
     <span class="small-link" id="reSetupLink">⚙️ 重設後端 API 網址</span>
   </div>
@@ -458,7 +496,7 @@
 <div id="app">
   <div class="topbar">
     <button class="topbar-btn" id="backBtn" title="回上一頁" style="font-size:15px;padding:6px 12px;">←</button>
-    <span class="topbar-brand">⚔️ Kevin's Team Building</span>
+    <span class="topbar-brand">⚔️ 任務卡佈告欄</span>
     <span class="topbar-company" id="topCompany"></span>
     <span class="topbar-spacer"></span>
     <span class="topbar-user" id="topUser"></span>
@@ -490,7 +528,7 @@
 
 <script>
 //=========================================================================
-// Kevin's Team Building ・ v1.7.2 雲端版
+// 任務卡佈告欄 ・ v1.8 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -529,7 +567,7 @@ const AUTH = {
   L1: '🟢 L1 自決即報',
   L2: '🟡 L2 報備執行',
   L3: '🟠 L3 請示後行',
-  L4: '🔴 L4 主公專斷',
+  L4: '🔴 L4 Kevin執行長 專斷',
 };
 
 // ===== Local persistence =====
@@ -676,8 +714,8 @@ async function showLogin() {
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.remove('show');
   document.getElementById('login').classList.remove('hidden');
-  document.getElementById('loginPwd').value = '';
   document.getElementById('loginError').textContent = '';
+  hidePinPad();   // v1.8：確保回到使用者選擇模式
   // 還原上次選擇
   try {
     const last = JSON.parse(localStorage.getItem(LS_LOGIN) || '{}');
@@ -711,43 +749,141 @@ async function refreshLoginUsers() {
     sel.innerHTML = `<option value="">（${escapeHtml(e.message)}）</option>`;
   }
 }
-document.getElementById('loginBtn').addEventListener('click', tryLogin);
-document.getElementById('loginPwd').addEventListener('keypress', e => { if (e.key === 'Enter') tryLogin(); });
-async function tryLogin() {
-  const username = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPwd').value;
-  const err = document.getElementById('loginError');
-  err.textContent = '';
-  if (!username) { err.textContent = '請選擇使用者'; return; }
-  if (!password) { err.textContent = '請輸入密碼'; return; }
+// v1.8 PIN 鍵盤狀態
+let pinBuffer = '';
+let pinUsername = '';
+let pinIsLord = false;   // 是否為 Kevin執行長 跨公司登入模式
+
+document.getElementById('loginPickUserBtn').addEventListener('click', showPinPad);
+document.getElementById('loginUser').addEventListener('change', () => {
+  document.getElementById('loginError').textContent = '';
+});
+
+function showPinPad(forLord) {
+  const isLord = forLord === true;
+  pinIsLord = isLord;
+  pinBuffer = '';
+
+  if (!isLord) {
+    pinUsername = document.getElementById('loginUser').value;
+    if (!pinUsername) {
+      document.getElementById('loginError').textContent = '請選擇使用者';
+      return;
+    }
+    document.getElementById('pinGreet').innerHTML = '👋 <b>' + escapeHtml(pinUsername) + '</b>，請輸入驗證碼';
+  } else {
+    pinUsername = 'Kevin執行長';
+    document.getElementById('pinGreet').innerHTML = '⚔️ Kevin執行長 跨公司登入';
+  }
+  document.getElementById('pinError').textContent = '';
+  renderPinDots();
+  document.getElementById('loginUserSection').style.display = 'none';
+  // 主公專屬登入 OR 一般登入時都隱藏「OR + 跨公司登入按鈕」
+  const dividerEl = document.querySelector('.login-divider');
+  const lordBtnEl = document.getElementById('lordBtn');
+  const reSetupEl = document.getElementById('reSetupLink');
+  if (dividerEl) dividerEl.style.display = 'none';
+  if (lordBtnEl) lordBtnEl.style.display = 'none';
+  if (reSetupEl) reSetupEl.style.display = 'none';
+  document.getElementById('loginPinSection').style.display = 'block';
+}
+
+function hidePinPad() {
+  pinBuffer = '';
+  pinIsLord = false;
+  document.getElementById('loginPinSection').style.display = 'none';
+  document.getElementById('loginUserSection').style.display = '';
+  const dividerEl = document.querySelector('.login-divider');
+  const lordBtnEl = document.getElementById('lordBtn');
+  const reSetupEl = document.getElementById('reSetupLink');
+  if (dividerEl) dividerEl.style.display = '';
+  if (lordBtnEl) lordBtnEl.style.display = '';
+  if (reSetupEl) reSetupEl.style.display = '';
+}
+
+function renderPinDots() {
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d, i) => d.classList.toggle('filled', i < pinBuffer.length));
+}
+
+function pinShake() {
+  const wrap = document.getElementById('pinDots');
+  wrap.classList.add('shake');
+  setTimeout(()=>wrap.classList.remove('shake'), 400);
+}
+
+// 鍵盤點擊
+document.getElementById('pinKeypad').addEventListener('click', e => {
+  const btn = e.target.closest('.pin-key');
+  if (!btn) return;
+  if (btn.dataset.back) {
+    pinBuffer = pinBuffer.slice(0, -1);
+    document.getElementById('pinError').textContent = '';
+    renderPinDots();
+    return;
+  }
+  if (!btn.dataset.digit) return;
+  if (pinBuffer.length >= 6) return;
+  pinBuffer += btn.dataset.digit;
+  document.getElementById('pinError').textContent = '';
+  renderPinDots();
+  if (pinBuffer.length === 6) {
+    setTimeout(tryPinLogin, 150);  // 略延遲讓最後一點 dot 動畫播完
+  }
+});
+
+document.getElementById('pinBackLink').addEventListener('click', hidePinPad);
+
+// 鍵盤實體支援
+document.addEventListener('keydown', e => {
+  if (document.getElementById('loginPinSection').style.display === 'none') return;
+  if (e.key >= '0' && e.key <= '9' && pinBuffer.length < 6) {
+    pinBuffer += e.key;
+    renderPinDots();
+    if (pinBuffer.length === 6) setTimeout(tryPinLogin, 150);
+  } else if (e.key === 'Backspace') {
+    pinBuffer = pinBuffer.slice(0, -1);
+    renderPinDots();
+  } else if (e.key === 'Escape') {
+    hidePinPad();
+  }
+});
+
+async function tryPinLogin() {
+  const password = pinBuffer;
+  const errEl = document.getElementById('pinError');
+  errEl.textContent = '';
+
   try {
-    const r = await api('login', { company: loginCompany, username, password });
-    TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
-    localStorage.setItem(LS_LOGIN, JSON.stringify({ company:loginCompany, username }));
-    STATE = await api('getInitData');
-    cacheState();
-    currentCompany = STATE.me.company;
-    document.getElementById('login').classList.add('hidden');
-    enterApp();
+    if (pinIsLord) {
+      const r = await api('lordLogin', { password });
+      TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+      localStorage.removeItem(LS_LOGIN);
+      STATE = await api('getInitData'); cacheState();
+      currentCompany = 'fb';
+      document.getElementById('login').classList.add('hidden');
+      hidePinPad();
+      enterApp();
+    } else {
+      const r = await api('login', { company: loginCompany, username: pinUsername, password });
+      TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
+      localStorage.setItem(LS_LOGIN, JSON.stringify({ company:loginCompany, username:pinUsername }));
+      STATE = await api('getInitData'); cacheState();
+      currentCompany = STATE.me.company;
+      document.getElementById('login').classList.add('hidden');
+      hidePinPad();
+      enterApp();
+    }
   } catch (e) {
-    err.textContent = e.message;
+    errEl.textContent = e.message;
+    pinShake();
+    pinBuffer = '';
+    setTimeout(renderPinDots, 350);
   }
 }
-document.getElementById('lordBtn').addEventListener('click', async () => {
-  const pwd = prompt('請輸入主公密碼：');
-  if (pwd === null) return;
-  try {
-    const r = await api('lordLogin', { password: pwd });
-    TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
-    localStorage.removeItem(LS_LOGIN);
-    STATE = await api('getInitData');
-    cacheState();
-    currentCompany = 'fb';
-    document.getElementById('login').classList.add('hidden');
-    enterApp();
-  } catch (e) {
-    showToast(e.message, 'error');
-  }
+// v1.8：跨公司登入也走 PIN 鍵盤模式（不再用 prompt）
+document.getElementById('lordBtn').addEventListener('click', () => {
+  showPinPad(true);
 });
 document.getElementById('reSetupLink').addEventListener('click', showSetup);
 
@@ -765,13 +901,15 @@ function enterApp() {
   document.getElementById('login').classList.add('hidden');
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('app').classList.add('show');
-  document.getElementById('topUser').textContent = STATE.me.username + (STATE.me.isLord?'（主公）':'') + '・' + roleLabel(STATE.me.role) + ((STATE.me.eligibleCompanies && STATE.me.eligibleCompanies.length>=2) ? '（可跨公司）' : '');
+  // v1.8：isLord 顯示為「Kevin執行長」，role 為「總指揮」
+  const displayName = STATE.me.isLord ? 'Kevin執行長' : STATE.me.username;
+  document.getElementById('topUser').textContent = displayName + '・' + roleLabel(STATE.me.role) + ((STATE.me.eligibleCompanies && STATE.me.eligibleCompanies.length>=2) ? '（可跨公司）' : '');
   renderTopCompany();
   renderSideNav();
   go('kanban');
 }
 function roleLabel(r) {
-  return ({ lord:'主公', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
+  return ({ lord:'總指揮', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
 }
 function renderTopCompany() {
   const el = document.getElementById('topCompany');
@@ -1022,7 +1160,7 @@ function renderKanban(m) {
         <span style="font-size:22px;">⚠️</span>
         <div style="flex:1;">
           <div style="font-weight:800;color:#991B1B;font-size:14px;">您有 ${myOverdue} 件逾期任務</div>
-          <div style="font-size:11px;color:#7C2D12;margin-top:2px;">請優先處理，必要時請告知主公延期原因</div>
+          <div style="font-size:11px;color:#7C2D12;margin-top:2px;">請優先處理，必要時請告知 Kevin執行長 延期原因</div>
         </div>
         <button class="btn btn-danger" onclick="kanbanFilter.assignee='*';kanbanFilter.status='*';kanbanSort='delay';go('kanban');">先看逾期</button>
       </div>
@@ -1058,7 +1196,7 @@ function renderKanban(m) {
         <div style="margin-top:6px;line-height:1.7;">
           每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。<br>
           狀態流轉：📋 計畫 → 🚀 執行 → 🔍 檢視 → ✅ 完成（加分）；阻塞用 ⛔ Hold；放棄／失敗用 ❌ Failed（扣分）。<br>
-          ${canScore?'<b>主公／admin 限定</b>：每張任務可設「複雜度（1-5）」「技術度（1-5）」與「加減分（-10~+10）」，作為員工年度考績依據。':''}
+          ${canScore?'<b>Kevin執行長／admin 限定</b>：每張任務可設「複雜度（1-5）」「技術度（1-5）」與「加減分（-10~+10）」，作為員工年度考績依據。':''}
         </div>
       </details>
     ` : ''}
@@ -1169,7 +1307,7 @@ function perfBanner(p) {
       <div class="perf-grid">
         <div class="perf-stat"><div class="perf-stat-label">✅ 完成</div><div class="perf-stat-value">${p.done}</div><div class="perf-stat-sub">基礎分 +${p.baseScore}</div></div>
         <div class="perf-stat"><div class="perf-stat-label">❌ 失敗</div><div class="perf-stat-value">${p.failed}</div><div class="perf-stat-sub">扣分 −${p.failScore}</div></div>
-        <div class="perf-stat"><div class="perf-stat-label">主公加減</div><div class="perf-stat-value" style="color:${p.bonusScore<0?'#FCA5A5':'#A7F3D0'};">${p.bonusScore>=0?'+':''}${p.bonusScore}</div><div class="perf-stat-sub">手動調整</div></div>
+        <div class="perf-stat"><div class="perf-stat-label">指揮加減</div><div class="perf-stat-value" style="color:${p.bonusScore<0?'#FCA5A5':'#A7F3D0'};">${p.bonusScore>=0?'+':''}${p.bonusScore}</div><div class="perf-stat-sub">手動調整</div></div>
         <div class="perf-stat perf-total"><div class="perf-stat-label">🏆 年度總分</div><div class="perf-stat-value">${p.totalScore>=0?'+':''}${p.totalScore}</div><div class="perf-stat-sub">複雜${p.avgComp} ・ 技術${p.avgTech}</div></div>
       </div>
       <div style="margin-top:10px;font-size:11px;opacity:.75;">
@@ -1457,7 +1595,7 @@ function openTaskModal(id) {
       ${canScore ? `
         <div style="margin-top:18px;padding:14px 14px 4px;border:1.5px dashed var(--primary-light);border-radius:10px;background:#F8FAFC;">
           <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-            <span>🎯 主公評分（admin 限定）</span>
+            <span>🎯 Kevin執行長 評分（admin 限定）</span>
             ${(() => {
               const sug = computeSuggestedBonus(data);
               if (!sug) return '';
@@ -1646,7 +1784,7 @@ function renderReport(m) {
     <details class="help-block">
       <summary>💡 軍師提醒：週報 = 5 分鐘可填、1 分鐘可看</summary>
       <div style="margin-top:6px;line-height:1.7;">
-        寫長等於沒寫——主公不會看。<br>
+        寫長等於沒寫——Kevin執行長 不會看。<br>
         ① 完成（≤3 件，動詞開頭，帶數字） ② 卡關／風險（需要協助請具體寫） ③ 下週重點（≤3 件，對齊北極星） ④ 我自己決定的事（L1/L2 內主動做的，練判斷力） ⑤ 心情（這欄是組織溫度雷達）<br>
         ${isOneOnOneWeek?'<b style="color:var(--primary);">本週是雙週一對一週次</b>，請於最下方額外回答三大問。':'本週<b>非</b>一對一週次，下週為一對一週。'}
       </div>
@@ -1662,7 +1800,7 @@ function renderReport(m) {
 
     <div class="report-card">
       ${reportField('done',  '①','本週完成（≤3 件）', existing?.done||'',          'var(--green)','例：完成母親節活動素材 5 張、IG 觸及 ＋12%')}
-      ${reportField('block', '②','卡關／風險', existing?.blocking||'',              'var(--accent)','需要主公幫忙的具體寫出來；無則寫「無」')}
+      ${reportField('block', '②','卡關／風險', existing?.blocking||'',              'var(--accent)','需要 Kevin執行長 幫忙的具體寫出來；無則寫「無」')}
       ${reportField('next',  '③','下週重點（≤3 件）', existing?.nextWeek||'',       'var(--primary)','對齊本週軍令的北極星')}
       ${reportField('decide','④','我自己決定的事（L1/L2）', existing?.ownDecisions||'','var(--yellow)','列出來，培養做決定的肌肉')}
       ${reportField('mood',  '⑤','一句話心情', existing?.mood||'',                  'var(--gray-500)','這週累不累？哪裡有成就感？哪裡被卡？','input')}
@@ -1670,7 +1808,7 @@ function renderReport(m) {
       ${isOneOnOneWeek ? `
         <div style="margin-top:24px;padding-top:20px;border-top:2px dashed var(--primary);">
           <h3 style="margin:0 0 4px;color:var(--primary);font-size:15px;">🤝 雙週一對一三大問</h3>
-          <p style="font-size:11px;color:var(--gray-500);margin:0 0 14px;">先用文字回答，下次一對一面談時主公會逐題與您對話</p>
+          <p style="font-size:11px;color:var(--gray-500);margin:0 0 14px;">先用文字回答，下次一對一面談時 Kevin執行長 會逐題與您對話</p>
           <div class="field">
             <label class="field-label">Q1. 這兩週你最自豪的判斷是什麼？為什麼？</label>
             <textarea class="field-textarea" id="r-q1">${escapeHtml(existing?.oneOnOne?.proudJudgment||'')}</textarea>
@@ -1680,7 +1818,7 @@ function renderReport(m) {
             <textarea class="field-textarea" id="r-q2">${escapeHtml(existing?.oneOnOne?.uncertainDecision||'')}</textarea>
           </div>
           <div class="field">
-            <label class="field-label">Q3. 下兩週你預計會遇到什麼判斷題？想先聽聽主公的視角嗎？</label>
+            <label class="field-label">Q3. 下兩週你預計會遇到什麼判斷題？想先聽聽 Kevin執行長 的視角嗎？</label>
             <textarea class="field-textarea" id="r-q3">${escapeHtml(existing?.oneOnOne?.upcomingJudgments||'')}</textarea>
           </div>
         </div>
@@ -1784,7 +1922,7 @@ function renderPdca(m) {
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToKanban('hold')" title="點擊查看所有 Hold 狀態任務"><div class="stat-label">⛔ Hold 卡關</div><div class="stat-value" style="color:${counts.hold>0?'var(--accent)':''}">${counts.hold}</div><div class="stat-sub">需主公介入 ・ 點擊 →</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToKanban('hold')" title="點擊查看所有 Hold 狀態任務"><div class="stat-label">⛔ Hold 卡關</div><div class="stat-value" style="color:${counts.hold>0?'var(--accent)':''}">${counts.hold}</div><div class="stat-sub">需 Kevin執行長 介入 ・ 點擊 →</div></div>
       <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToKanban('failed')" title="點擊查看所有 Failed 任務"><div class="stat-label">❌ Failed 失敗</div><div class="stat-value" style="color:${counts.failed>0?'var(--accent)':''}">${counts.failed||0}</div><div class="stat-sub">扣分任務 ・ 點擊 →</div></div>
       <div class="stat-card" style="border-top:3px solid var(--accent);cursor:pointer;" onclick="jumpToOverdue()" title="點擊查看所有逾期任務"><div class="stat-label">⏰ 已逾期</div><div class="stat-value" style="color:${overdue>0?'var(--accent)':''}">${overdue}</div><div class="stat-sub">${overdue>0?'立即處理 →':'良好'}</div></div>
       <div class="stat-card"><div class="stat-label">⏱ 平均週期</div><div class="stat-value">${avgCycle}<span style="font-size:14px;color:var(--gray-500);"> 天</span></div><div class="stat-sub">建立→完成</div></div>
@@ -1834,7 +1972,7 @@ async function renderPeople(m) {
       </div>
     </div>
     <div style="background:#FFF8DC;border:1px solid #E8B923;border-radius:8px;padding:8px 12px;font-size:12px;color:#7C5C00;margin-bottom:10px;">
-      🔐 <b>Admin 視圖</b>：以下顯示所有員工明文密碼，僅主公／admin 可見。請勿截圖外流。點 👁 切換顯示／遮罩。
+      🔐 <b>Admin 視圖</b>：以下顯示所有員工明文密碼，僅 Kevin執行長／admin 可見。請勿截圖外流。點 👁 切換顯示／遮罩。
     </div>
     <div style="background:var(--bg-card);border-radius:10px;box-shadow:var(--shadow-sm);overflow:hidden;">
       <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1fr 110px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
@@ -2151,7 +2289,7 @@ async function deleteUser(company, username) {
 //=========================================================================
 function renderOgsm(m) {
   if (!STATE.me.isLord) {
-    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>OGSM 戰略表為主公專屬</div>`;
+    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>OGSM 戰略表為 Kevin執行長 專屬</div>`;
     return;
   }
   const company = currentCompany;
@@ -2160,7 +2298,7 @@ function renderOgsm(m) {
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">OGSM 戰略表</h2>
-      <p class="page-sub">${COMPANY_LABEL[company]} ・ 主公限定 ・ 最後更新 ${(o.lastUpdated||'').slice(0,16).replace('T',' ') || '尚未更新'}</p>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ Kevin執行長 限定 ・ 最後更新 ${(o.lastUpdated||'').slice(0,16).replace('T',' ') || '尚未更新'}</p>
     </div>
 
     <details class="help-block">
@@ -2272,7 +2410,7 @@ function readOgsmRows(id, keys) {
 //=========================================================================
 function renderScoreboard(m) {
   if (!STATE.me.isLord) {
-    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>積分表為主公限定</div>`;
+    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>積分表為 Kevin執行長 限定</div>`;
     return;
   }
   const company = currentCompany;
@@ -2350,7 +2488,7 @@ function renderScoreboard(m) {
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">🏆 下屬積分表</h2>
-      <p class="page-sub">${COMPANY_LABEL[company]} ・ ${rangeLabel} ・ 主公限定 ・ 本月最佳員工挑選依據</p>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ ${rangeLabel} ・ Kevin執行長 限定 ・ 本月最佳員工挑選依據</p>
       <div class="page-actions" style="margin-top:10px;">
         ${['month','quarter','year','all'].map(r => `
           <button class="btn ${scoreboardRange===r?'btn-primary':'btn-ghost'}" onclick="scoreboardRange='${r}';go('scoreboard');">
@@ -2365,7 +2503,7 @@ function renderScoreboard(m) {
       <div style="margin-top:6px;line-height:1.7;">
         <b>基礎分</b>：每完成一張 Done 任務 = 複雜度 + 技術度（最高 5+5=10）<br>
         <b>失敗扣分</b>：每張 Failed 任務扣 (複雜度 + 技術度) 分<br>
-        <b>主公加減分</b>：時效性建議分 + 主公手動微調（−10~+10）<br>
+        <b>指揮加減分</b>：時效性建議分 + Kevin執行長 手動微調（−10~+10）<br>
         <b>協作貢獻</b>：被列為協作者的 Done 任務，獲得主負責人分數的 50%<br>
         <b>總分公式 = 基礎分 − 失敗扣分 + 加減分 + 協作貢獻分</b>
       </div>
@@ -2409,7 +2547,7 @@ function renderProfile(m) {
     ${me.isLord ? `
       <div class="report-card">
         <div style="font-size:14px;color:var(--gray-700);">
-          主公密碼存於 system sheet 的 <code>lord_password</code>，請直接於 Google Sheet 修改。<br>
+          Kevin執行長 跨公司密碼存於 system sheet 的 <code>lord_password</code>，請直接於 Google Sheet 修改。<br>
           可在頂部下拉切換三家公司視角。
         </div>
       </div>
