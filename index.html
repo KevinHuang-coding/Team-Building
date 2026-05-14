@@ -264,6 +264,8 @@
   [data-theme="dark"] .task-card.is-adhoc .task-deadline{color:#C4B5FD;}
   [data-theme="dark"] .task-card.is-adhoc .task-deadline.overdue{color:#FCA5A5;}
   .task-card.is-silent{box-shadow:0 0 0 2px #FCA5A5;animation:silentPulse 2.4s ease-in-out infinite;}
+  .task-card.is-self-created{outline:2px solid rgba(251,191,36,.5);outline-offset:-2px;}
+  [data-theme="dark"] .task-card.is-self-created{outline-color:rgba(251,191,36,.7);}
   @keyframes silentPulse{0%,100%{box-shadow:0 0 0 2px rgba(252,165,165,.5);}50%{box-shadow:0 0 0 4px rgba(252,165,165,.95);}}
   .task-card{position:relative;}
   .dispatch-date{position:absolute;top:8px;right:10px;font-size:9px;font-weight:700;color:#6B7280;background:#F3F4F6;padding:2px 6px;border-radius:8px;letter-spacing:.02em;}
@@ -446,7 +448,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.8 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.9 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -533,7 +535,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v1.8 雲端版
+// 任務卡佈告欄 ・ v1.9 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1084,7 +1086,8 @@ function renderKanban(m) {
   const tasks = (STATE.tasks?.[currentCompany]) || [];
   const me = STATE.me;
   const isLeader = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
-  const canCreate = isLeader;
+  // v1.9：staff 也能自建任務（受三道防線限制）
+  const canCreate = isLeader || me.role === 'staff';
   const canScore = me.isLord || me.role === 'admin';
 
   // 收集所有 assignee 列表（合併目前任務指派 + 帳號清單）
@@ -1170,6 +1173,30 @@ function renderKanban(m) {
         <button class="btn btn-danger" onclick="kanbanFilter.assignee='*';kanbanFilter.status='*';kanbanSort='delay';go('kanban');">先看逾期</button>
       </div>
     ` : ''}
+
+    ${(isLeader) ? (() => {
+      // v1.9：過去 7 天員工自建任務 banner（領導視角才看）
+      const sevenDaysAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+      const recentSelf = tasks.filter(t => t.selfCreated && (t.createdAt||'').slice(0,10) >= sevenDaysAgo);
+      if (recentSelf.length === 0) return '';
+      const byCreator = {};
+      recentSelf.forEach(t => {
+        const k = t.creator || t.assignee || '?';
+        byCreator[k] = (byCreator[k]||0) + 1;
+      });
+      const ranked = Object.entries(byCreator).sort((a,b)=>b[1]-a[1]);
+      const list = ranked.map(([n,c]) => `<b style="color:#7C5C00;">${escapeHtml(n)}</b>×${c}`).join('、');
+      return `
+        <div style="background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);border-left:4px solid #F59E0B;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:22px;">🌟</span>
+          <div style="flex:1;color:#7C2D12;">
+            <div style="font-weight:800;font-size:14px;">過去 7 天有 ${recentSelf.length} 張員工自建任務</div>
+            <div style="font-size:11.5px;margin-top:2px;">${list} ・ 請審視內容並補上積分</div>
+          </div>
+          <button class="btn btn-ghost" onclick="kanbanSort='created';kanbanFilter.assignee='*';kanbanFilter.status='*';go('kanban');" style="background:white;color:#7C2D12;border-color:#F59E0B;">查看 →</button>
+        </div>
+      `;
+    })() : ''}
 
     ${isLeader ? `
       <div class="member-tabs">
@@ -1353,9 +1380,12 @@ function taskCard(t) {
   const createdShort = (t.createdAt||'').slice(5,10).replace('-','/');
   const ageDays = t.createdAt ? Math.floor((new Date() - new Date(t.createdAt))/86400000) : 0;
 
+  // v1.9：員工自建識別
+  const isSelf = !!t.selfCreated;
+
   return `
-    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSilent?'is-silent':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
-      ${t.createdAt ? `<div class="dispatch-date" title="任務派發日 ・ 距今 ${ageDays} 天">📅 ${createdShort}</div>` : ''}
+    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSilent?'is-silent':''} ${isSelf?'is-self-created':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
+      ${t.createdAt ? `<div class="dispatch-date" title="任務派發日 ・ 距今 ${ageDays} 天">📅 ${createdShort}${isSelf?' 🌟':''}</div>` : ''}
       ${isChild ? `<div style="font-size:9.5px;color:var(--gray-400);margin-bottom:2px;">↳ ${escapeHtml((parent&&parent.title)||'(已刪除父任務)')}</div>` : ''}
       <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
@@ -1439,6 +1469,9 @@ function openTaskModal(id) {
   };
   const canScore = me.isLord || me.role === 'admin';
   const canCreateParent = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+  // v1.9：staff 不能改 assignee/deadline/midCheck（這些欄位由 admin/lord 訂）
+  const isStaffUser = me.role === 'staff';
+  const lockedByStaff = isStaffUser ? 'disabled' : '';
   // v1.6：初始化附檔暫存
   window._pendingAttachments = (data.attachments || []).slice();
 
@@ -1508,7 +1541,7 @@ function openTaskModal(id) {
         </div>
       ` : ''}
 
-      ${(canCreateParent && !isChildTask) ? `
+      ${(canCreateParent && !isChildTask && !isStaffUser) ? `
         <div class="field">
           <label class="field-label">🎯 專案長期 KPI（選填，僅父任務適用）</label>
           <input class="field-input" id="f-projectKPI" value="${escapeHtml(data.projectKPI||'')}" placeholder="一句話量化目標。例：6 個月內新店開幕、首月營收 ≥ X 萬">
@@ -1546,20 +1579,20 @@ function openTaskModal(id) {
       </div>
       <div class="field-row">
         <div class="field">
-          <label class="field-label">⑤ 截止日</label>
-          <input class="field-input" type="date" id="f-deadline" value="${data.deadline||''}">
+          <label class="field-label">⑤ 截止日${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
+          <input class="field-input" type="date" id="f-deadline" value="${data.deadline||''}" ${lockedByStaff}>
         </div>
         <div class="field">
-          <label class="field-label">中段檢視點</label>
-          <input class="field-input" type="date" id="f-mid" value="${data.midCheck||''}">
+          <label class="field-label">中段檢視點${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
+          <input class="field-input" type="date" id="f-mid" value="${data.midCheck||''}" ${lockedByStaff}>
         </div>
       </div>
       <div class="field-row-3">
         <div class="field">
-          <label class="field-label">主要負責人 <span class="req">*</span></label>
-          <select class="field-select" id="f-assignee">
+          <label class="field-label">主要負責人 <span class="req">*</span>${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 員工自建鎖定為自己</span>':''}</label>
+          <select class="field-select" id="f-assignee" ${isStaffUser?'disabled':''}>
             <option value="">未指派</option>
-            ${userList.map(u => `<option value="${escapeHtml(u)}" ${data.assignee===u?'selected':''}>${escapeHtml(u)}</option>`).join('')}
+            ${userList.map(u => `<option value="${escapeHtml(u)}" ${(isStaffUser?(u===me.username):(data.assignee===u))?'selected':''}>${escapeHtml(u)}</option>`).join('')}
           </select>
         </div>
         <div class="field">
@@ -2449,6 +2482,7 @@ function renderScoreboard(m) {
       name, done:0, failed:0, total:0,
       baseScore:0, failScore:0, bonusScore:0, totalScore:0,
       collabDone:0, collabScore:0,   // 作為協作者得到的分數
+      selfCreated:0,                  // v1.9：自建任務數（主動性指標）
     };
   });
 
@@ -2466,6 +2500,10 @@ function renderScoreboard(m) {
         stats[main].failScore += score;
       }
       stats[main].bonusScore += bonus;
+      // v1.9：自建貢獻（從 creator 算，避免 assignee 與 creator 不同的邊界情況）
+      if (t.selfCreated && t.creator && stats[t.creator]) {
+        stats[t.creator].selfCreated++;
+      }
     }
     // 協作者拿 50%
     if (Array.isArray(t.collaborators)) {
@@ -2516,24 +2554,26 @@ function renderScoreboard(m) {
 
     ${ranked.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">📊</div>${rangeLabel}尚無資料</div>` : `
     <div style="background:white;border-radius:12px;box-shadow:var(--shadow-sm);overflow:hidden;">
-      <div style="display:grid;grid-template-columns:50px 1.4fr 70px 70px 80px 80px 80px 100px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:.02em;">
-        <div>排名</div><div>下屬</div><div>完成</div><div>失敗</div><div>基礎分</div><div>協作分</div><div>加減</div><div style="text-align:right;">🏆 總分</div>
+      <div style="display:grid;grid-template-columns:50px 1.3fr 60px 60px 70px 70px 70px 80px 90px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:11px;color:var(--gray-600);text-transform:uppercase;letter-spacing:.02em;">
+        <div>排名</div><div>下屬</div><div>完成</div><div>失敗</div><div>基礎分</div><div>協作分</div><div>🌟 自建</div><div>加減</div><div style="text-align:right;">🏆 總分</div>
       </div>
       ${ranked.map((s,i) => {
         const isTop3 = i < 3;
         return `
-        <div style="display:grid;grid-template-columns:50px 1.4fr 70px 70px 80px 80px 80px 100px;padding:14px;border-top:1px solid var(--gray-100);font-size:13.5px;align-items:center;${isTop3?'background:linear-gradient(90deg,#FEF3C7 0%,transparent 60%);':''}">
+        <div style="display:grid;grid-template-columns:50px 1.3fr 60px 60px 70px 70px 70px 80px 90px;padding:14px;border-top:1px solid var(--gray-100);font-size:13.5px;align-items:center;${isTop3?'background:linear-gradient(90deg,#FEF3C7 0%,transparent 60%);':''}">
           <div style="font-size:20px;">${medal(i)}</div>
           <div><b style="font-size:14px;">${escapeHtml(s.name)}</b><div style="font-size:10px;color:var(--gray-500);">${s.total} 件任務</div></div>
           <div style="color:var(--green);font-weight:700;">${s.done}</div>
           <div style="color:var(--accent);font-weight:${s.failed>0?'700':'400'};">${s.failed}</div>
           <div style="color:var(--primary);">+${s.baseScore}</div>
           <div style="color:#6B21A8;">+${s.collabScore}<div style="font-size:9px;color:var(--gray-400);">${s.collabDone}件</div></div>
+          <div style="color:#B45309;font-weight:${s.selfCreated>0?'700':'400'};">🌟 ${s.selfCreated}</div>
           <div style="color:${s.bonusScore<0?'var(--accent)':s.bonusScore>0?'var(--green)':'var(--gray-500)'};">${s.bonusScore>=0?'+':''}${s.bonusScore}</div>
           <div style="text-align:right;font-size:20px;font-weight:800;color:${s.totalScore>=0?'var(--primary)':'var(--accent)'};">${s.totalScore>=0?'+':''}${s.totalScore}</div>
         </div>
       `;}).join('')}
     </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--gray-500);text-align:right;">🌟 自建欄位代表員工主動建卡數，是「主動性」量化指標</div>
     `}
   `;
 }
