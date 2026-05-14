@@ -51,6 +51,82 @@
     --shadow:0 2px 6px rgba(0,0,0,.4);
     --shadow-lg:0 8px 24px rgba(0,0,0,.6);
   }
+
+  /* ===== v1.7.1 Dark mode 全域對比強化（一次解決所有盲點） ===== */
+  /* 1. select 的原生 <option> 在 dark mode 強制深底白字（瀏覽器原本是白底） */
+  [data-theme="dark"] select option,
+  [data-theme="dark"] select optgroup{
+    background:#1E293B !important;
+    color:#F1F5F9 !important;
+  }
+  /* 2. topbar 內的公司切換下拉（inline style 蓋過 var，這裡用更高優先級覆蓋） */
+  [data-theme="dark"] #lordCompanySwitch{
+    background:#0F3454 !important;
+    border-color:rgba(167,194,232,.5) !important;
+    color:#F1F5F9 !important;
+  }
+  [data-theme="dark"] #lordCompanySwitch option{
+    background:#1E293B !important;
+    color:#F1F5F9 !important;
+  }
+  /* 3. loading mask 在 dark mode 改為深色透明（原本是半透明白會閃） */
+  [data-theme="dark"] #globalLoading{
+    background:rgba(15,23,42,.75) !important;
+  }
+  /* 4. modal 標題 / body / foot 全部吃 dark 變數 */
+  [data-theme="dark"] .modal{background:var(--bg-modal);}
+  [data-theme="dark"] .modal-head{background:var(--bg-modal);border-color:var(--gray-200);}
+  [data-theme="dark"] .modal-foot{background:var(--gray-100);border-color:var(--gray-200);}
+  [data-theme="dark"] .modal-title{color:var(--gray-800);}
+  [data-theme="dark"] .modal-close{color:var(--gray-500);}
+  [data-theme="dark"] .modal-close:hover{color:var(--gray-800);}
+  /* 5. 所有 input / textarea / select 統一 dark 視覺 */
+  [data-theme="dark"] .field-input,
+  [data-theme="dark"] .field-select,
+  [data-theme="dark"] .field-textarea,
+  [data-theme="dark"] .form-input,
+  [data-theme="dark"] .form-select{
+    background:var(--bg-card);
+    color:var(--gray-800);
+    border-color:var(--gray-200);
+  }
+  [data-theme="dark"] .field-input::placeholder,
+  [data-theme="dark"] .field-textarea::placeholder,
+  [data-theme="dark"] .form-input::placeholder{color:var(--gray-500);}
+  /* 6. 帳號管理頁的密碼 cell（inline style 用 var(--gray-700) 在 dark 下變淺，加強） */
+  [data-theme="dark"] .pwd-cell{color:#F1F5F9;}
+  /* 7. 按鈕 ghost 變體（白底在 dark 下難看） */
+  [data-theme="dark"] .btn-ghost{background:var(--bg-card);color:var(--gray-700);border-color:var(--gray-200);}
+  [data-theme="dark"] .btn-ghost:hover{background:var(--gray-100);}
+  /* 8. 卡片內所有 task-tag（除已有專用樣式者）改強對比 */
+  [data-theme="dark"] .task-tag{background:var(--gray-100);color:var(--gray-700);}
+  [data-theme="dark"] .task-meta{color:var(--gray-600);}
+  /* 9. PDCA 儀表 stat-card 在 dark 下白底改深 */
+  [data-theme="dark"] .stat-card{background:var(--bg-card);}
+  [data-theme="dark"] .stat-value{color:var(--gray-800);}
+  /* 10. 員工 tab、status pill 在 dark 下白底太亮 */
+  [data-theme="dark"] .member-tab{color:var(--gray-600);}
+  [data-theme="dark"] .member-tab:hover{background:var(--gray-100);}
+  [data-theme="dark"] .member-tab .badge{background:var(--bg-card);color:var(--gray-700);}
+  [data-theme="dark"] .status-pill{background:var(--bg-card);color:var(--gray-700);border-color:var(--gray-200);}
+  /* 11. 報告卡 / OGSM 卡 / 帳號管理表格在 dark 下白底改深 */
+  [data-theme="dark"] .report-card{background:var(--bg-card);}
+  [data-theme="dark"] .ogsm-block{background:var(--bg-card);}
+  [data-theme="dark"] .pdca-flow{background:var(--bg-card);}
+  /* 12. 帳號管理橫條與表格 row 統一 */
+  [data-theme="dark"] [style*="background:white"]{background:var(--bg-card) !important;}
+  [data-theme="dark"] [style*="background:#F3F4F6"]{background:var(--gray-100) !important;}
+  [data-theme="dark"] [style*="background:#FFF8DC"]{background:#3D2E12 !important;color:#FDE68A !important;}
+  /* 13. 詳情頁淺色背景塊（field-row、進度紀錄、子任務列表等）強化 */
+  [data-theme="dark"] [style*="background:var(--gray-50)"]{background:var(--gray-100) !important;}
+  /* 14. dispatch-date 在 dark 下白色背景太亮 */
+  [data-theme="dark"] .dispatch-date{background:var(--gray-100);color:var(--gray-600);}
+  /* 15. 關閉橫幅、警示橫幅在 dark 下調整 */
+  [data-theme="dark"] [style*="background:#FEE2E2"]{background:#3F1D1D !important;color:#FCA5A5 !important;}
+  [data-theme="dark"] [style*="background:#FEF3C7"]{background:#3D2E12 !important;color:#FDE68A !important;}
+  [data-theme="dark"] [style*="background:#DBEAFE"]{background:#1E3A5F !important;color:#A7C2E8 !important;}
+  [data-theme="dark"] [style*="background:#E2EFDA"]{background:#1F3528 !important;color:#86EFAC !important;}
+  [data-theme="dark"] [style*="background:#FBE5D6"]{background:#3D2516 !important;color:#FED7AA !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--bg-page);color:var(--gray-800);font-size:14px;line-height:1.55;transition:background-color .2s, color .2s;width:100%;max-width:100%;overflow-x:hidden;}
   body{min-width:0;-webkit-text-size-adjust:100%;}
@@ -347,7 +423,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">Kevin's Team Building</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.7 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.7.2 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -414,7 +490,7 @@
 
 <script>
 //=========================================================================
-// Kevin's Team Building ・ v1.7 雲端版
+// Kevin's Team Building ・ v1.7.2 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
