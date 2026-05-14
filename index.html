@@ -448,7 +448,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.9 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v1.9.1 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -535,7 +535,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v1.9 雲端版
+// 任務卡佈告欄 ・ v1.9.1 雲端版
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1177,7 +1177,7 @@ function renderKanban(m) {
     ${(isLeader) ? (() => {
       // v1.9：過去 7 天員工自建任務 banner（領導視角才看）
       const sevenDaysAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
-      const recentSelf = tasks.filter(t => t.selfCreated && (t.createdAt||'').slice(0,10) >= sevenDaysAgo);
+      const recentSelf = tasks.filter(t => t.selfCreated && iso(t.createdAt).slice(0,10) >= sevenDaysAgo);
       if (recentSelf.length === 0) return '';
       const byCreator = {};
       recentSelf.forEach(t => {
@@ -1285,7 +1285,7 @@ function getSortFn(mode, today) {
   };
   switch(mode) {
     case 'deadline':
-      return (a,b) => (a.deadline||'9999').localeCompare(b.deadline||'9999');
+      return (a,b) => (iso(a.deadline)||'9999').localeCompare(iso(b.deadline)||'9999');
     case 'score':
       return (a,b) => score(b) - score(a);
     case 'priority':
@@ -1293,7 +1293,7 @@ function getSortFn(mode, today) {
     case 'delay':
       return (a,b) => delay(b) - delay(a);
     case 'created':
-      return (a,b) => (b.createdAt||'').localeCompare(a.createdAt||'');
+      return (a,b) => iso(b.createdAt).localeCompare(iso(a.createdAt));
     case 'smart':
     default:
       return (a,b) => smartScore(b) - smartScore(a);
@@ -1377,7 +1377,7 @@ function taskCard(t) {
   const isSilent = isAdhoc && ['plan','do','check','hold'].indexOf(t.status)>=0 && silentDays >= ADHOC_SILENT_DAYS;
 
   // v1.6：派發日期（距今天數）
-  const createdShort = (t.createdAt||'').slice(5,10).replace('-','/');
+  const createdShort = iso(t.createdAt).slice(5,10).replace('-','/');
   const ageDays = t.createdAt ? Math.floor((new Date() - new Date(t.createdAt))/86400000) : 0;
 
   // v1.9：員工自建識別
@@ -1414,7 +1414,7 @@ function taskCard(t) {
 function computeTimeliness(t) {
   if (t.status !== 'done') return null;
   if (!t.deadline || !t.completedAt) return null;
-  const done = t.completedAt.slice(0,10);
+  const done = iso(t.completedAt).slice(0,10);
   if (done < t.deadline)  return { tag:'early',  icon:'🚀 提前', bg:'#DBEAFE', color:'#1F4E79' };
   if (done === t.deadline) return { tag:'ontime', icon:'⏰ 準時', bg:'#FEF3C7', color:'#BF8F00' };
   return                          { tag:'late',   icon:'🐢 延誤', bg:'#FEE2E2', color:'#991B1B' };
@@ -1439,7 +1439,7 @@ function computeSuggestedBonus(t) {
   if (tm.tag === 'ontime') return { points: 1,  reason: '⏰ 準時完成 (+1)' };
   // 延誤：按天數加重，最多 -10
   if (tm.tag === 'late') {
-    const done = new Date(t.completedAt.slice(0,10));
+    const done = new Date(iso(t.completedAt).slice(0,10));
     const deadline = new Date(t.deadline);
     const days = Math.round((done - deadline) / 86400000);
     const weeks = Math.ceil(days / 7);
@@ -1697,7 +1697,7 @@ function openTaskModal(id) {
       <div class="field">
         <label class="field-label">進度紀錄</label>
         <div style="background:var(--gray-50);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gray-700);max-height:140px;overflow-y:auto;">
-          ${data.notes.map(n => `<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${(n.at||'').slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
+          ${data.notes.map(n => `<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${iso(n.at).slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
         </div>
       </div>` : ''}
 
@@ -1714,7 +1714,7 @@ function openTaskModal(id) {
         <label class="field-label">新增進度／回報（可留空）</label>
         <textarea class="field-textarea" id="f-newnote" placeholder="例：今日已聯繫供應商 X，等明日報價。"></textarea>
       </div>
-      ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${(data.createdAt||'').slice(0,16).replace('T',' ')}</p>`:''}
+      ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${iso(data.createdAt).slice(0,16).replace('T',' ')}</p>`:''}
     `,
     foot: `
       ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
@@ -1869,11 +1869,11 @@ function renderReport(m) {
     </div>
 
     <h3 style="margin:24px 0 10px;font-size:15px;color:var(--gray-700);">📚 歷史週報（最近 8 週）</h3>
-    ${(myReports.slice().sort((a,b)=>(b.weekId||'').localeCompare(a.weekId||'')).slice(0,8)).map(r => `
+    ${(myReports.slice().sort((a,b)=>String(b.weekId||'').localeCompare(String(a.weekId||''))).slice(0,8)).map(r => `
       <div class="report-card" style="padding:14px 18px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <strong>${r.weekId} ・ ${escapeHtml(r.username)}</strong>
-          <span style="font-size:11px;color:var(--gray-400);">${(r.createdAt||'').slice(0,16).replace('T',' ')}</span>
+          <span style="font-size:11px;color:var(--gray-400);">${iso(r.createdAt).slice(0,16).replace('T',' ')}</span>
         </div>
         ${r.done?`<div style="font-size:12.5px;"><b style="color:var(--green);">✅ 完成：</b>${escapeHtml(r.done)}</div>`:''}
         ${r.blocking?`<div style="font-size:12.5px;"><b style="color:var(--accent);">⚠️ 卡關：</b>${escapeHtml(r.blocking)}</div>`:''}
@@ -2160,10 +2160,10 @@ function renderTaskTimeline(task) {
     });
   });
   // 排序
-  events.sort((a,b) => (a.at||'').localeCompare(b.at||''));
+  events.sort((a,b) => iso(a.at).localeCompare(iso(b.at)));
 
   // 計算間隔（看是不是「臨時抱佛腳」）
-  const dates = events.map(e => (e.at||'').slice(0,10)).filter(Boolean);
+  const dates = events.map(e => iso(e.at).slice(0,10)).filter(Boolean);
   const uniqueDates = Array.from(new Set(dates));
   const activeDays = uniqueDates.length;
   const totalDays = task.createdAt && task.completedAt
@@ -2182,7 +2182,7 @@ function renderTaskTimeline(task) {
     </div>
     ${events.map(ev => `
       <div style="padding:5px 0;border-bottom:1px dashed var(--gray-200);">
-        <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${(ev.at||'').slice(0,16).replace('T',' ')}</span>
+        <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${iso(ev.at).slice(0,16).replace('T',' ')}</span>
         <span style="color:var(--gray-500);margin-left:6px;">${escapeHtml(ev.by||'')}</span>
         <div style="margin-top:2px;">${escapeHtml(ev.text)}</div>
       </div>
@@ -2336,7 +2336,7 @@ function renderOgsm(m) {
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">OGSM 戰略表</h2>
-      <p class="page-sub">${COMPANY_LABEL[company]} ・ Kevin執行長 限定 ・ 最後更新 ${(o.lastUpdated||'').slice(0,16).replace('T',' ') || '尚未更新'}</p>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ Kevin執行長 限定 ・ 最後更新 ${iso(o.lastUpdated).slice(0,16).replace('T',' ') || '尚未更新'}</p>
     </div>
 
     <details class="help-block">
@@ -2464,7 +2464,7 @@ function renderScoreboard(m) {
 
   const inRange = t => {
     if (!cutoffISO) return true;
-    const dt = (t.completedAt || t.createdAt || '').slice(0,10);
+    const dt = iso(t.completedAt || t.createdAt).slice(0,10);
     return dt >= cutoffISO;
   };
   const tasks = allTasks.filter(inRange);
@@ -2669,6 +2669,17 @@ function showToast(msg, type='') {
 //=========================================================================
 // Helpers
 //=========================================================================
+// v1.9.1：把任何時間值（Date 物件 / ISO 字串 / null / undefined）統一轉成 ISO 字串
+// 解決舊版後端傳回 Date 物件導致前端 .slice 炸錯的問題
+function iso(v) {
+  if (v === undefined || v === null || v === '') return '';
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return new Date(v).toISOString();
+  // 物件且有可能是 Date 序列化後變成奇怪格式
+  try { return new Date(v).toISOString(); } catch (e) { return ''; }
+}
+
 function escapeHtml(s) {
   return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 }
