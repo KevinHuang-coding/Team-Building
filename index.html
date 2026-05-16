@@ -1395,6 +1395,8 @@ function taskCard(t) {
         ${showScore?`<span class="task-tag" style="background:#EEF2FF;color:#3730A3;" title="複雜度${complexity} + 技術度${techDiff}">★${taskScore}</span>`:''}
         ${bonus!==0?`<span class="task-tag" style="background:${bonus>0?'var(--green-light)':'var(--orange-light)'};color:${bonus>0?'var(--green)':'var(--orange)'};">${bonus>0?'+':''}${bonus}</span>`:''}
         ${timeliness ? `<span class="task-tag" style="background:${timeliness.bg};color:${timeliness.color};">${timeliness.icon}</span>` : ''}
+        ${(t.deadlineEventId||t.midCheckEventId)?`<span class="task-tag" title="已同步至 Google Calendar" style="background:#E8F5E9;color:#2E7D32;font-size:10px;">📅 GCal</span>`:''}
+        ${t.midCheck?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px;" title="中段檢查日">🔍 ${t.midCheck}</span>`:''}
         ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}${delayInfo.days>0?` (+${delayInfo.days}d)`:''}</span>`:''}
       </div>
       ${isParent ? `
@@ -2013,19 +2015,21 @@ async function renderPeople(m) {
       🔐 <b>Admin 視圖</b>：以下顯示所有員工明文密碼，僅 Kevin執行長／admin 可見。請勿截圖外流。點 👁 切換顯示／遮罩。
     </div>
     <div style="background:var(--bg-card);border-radius:10px;box-shadow:var(--shadow-sm);overflow:hidden;">
-      <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1fr 110px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
+      <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1.5fr 1fr 110px;padding:10px 14px;background:var(--gray-100);font-weight:700;font-size:12px;color:var(--gray-600);">
         <div>使用者</div>
         <div>密碼 <button onclick="togglePwdAll(this)" style="margin-left:6px;font-size:11px;color:var(--gray-500);">👁</button></div>
+        <div>Email（通知用）</div>
         <div>角色</div><div>操作</div>
       </div>
       ${list.map((u,idx) => `
-        <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1fr 110px;padding:10px 14px;border-top:1px solid var(--gray-100);font-size:13px;align-items:center;">
+        <div style="display:grid;grid-template-columns:1.6fr 1.4fr 1.5fr 1fr 110px;padding:10px 14px;border-top:1px solid var(--gray-100);font-size:13px;align-items:center;">
           <div><b>${escapeHtml(u.username)}</b>${u.locked?` <span style="color:var(--accent);font-size:11px;">🔒已鎖定</span>`:''}</div>
           <div style="font-family:monospace;color:${u.hasPassword?'var(--gray-800)':'var(--accent)'};">
             ${u.hasPassword
               ? `<span class="pwd-cell" data-clear="${escapeHtml(u.password)}" data-mask="••••••">••••••</span>`
               : '<span style="color:var(--accent);font-style:italic;">(未設定)</span>'}
           </div>
+          <div style="font-size:11px;color:${u.email?'var(--gray-700)':'var(--gray-400)'};">${u.email?escapeHtml(u.email):'—'}</div>
           <div>${roleLabel(u.role)}</div>
           <div><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick='openUserEdit("${company}", ${JSON.stringify(u).replace(/"/g,"&quot;")})'>編輯</button></div>
         </div>
@@ -2058,6 +2062,10 @@ function openUserEdit(company, payload) {
           <option value="staff"   ${u.role==='staff'?'selected':''}>staff（成員）</option>
         </select>
       </div>
+      <div class="field">
+        <label class="field-label">Email <span style="font-size:10px;color:var(--gray-400);font-weight:400;">（用於任務截止日 / 中段檢查日通知）</span></label>
+        <input class="field-input" type="email" id="u-email" value="${escapeHtml(u.email||'')}" placeholder="例：staff@example.com">
+      </div>
       ${!isNew ? `
         <div class="field">
           <label class="field-label">鎖定狀態</label>
@@ -2083,6 +2091,7 @@ async function saveUser(company, originalUsername) {
     password: document.getElementById('u-pwd').value,
     role: document.getElementById('u-role').value,
     locked: document.getElementById('u-locked') ? Number(document.getElementById('u-locked').value) : 0,
+    email: document.getElementById('u-email') ? document.getElementById('u-email').value.trim() : '',
   };
   if (!user.username) { showToast('使用者名稱必填','error'); return; }
   try {
