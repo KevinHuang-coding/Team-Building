@@ -127,6 +127,12 @@
   [data-theme="dark"] [style*="background:#DBEAFE"]{background:#1E3A5F !important;color:#A7C2E8 !important;}
   [data-theme="dark"] [style*="background:#E2EFDA"]{background:#1F3528 !important;color:#86EFAC !important;}
   [data-theme="dark"] [style*="background:#FBE5D6"]{background:#3D2516 !important;color:#FED7AA !important;}
+  /* v2.1：進度回報區塊背景（hardcoded #FAFBFF 在 dark 下變深底以拉對比）*/
+  [data-theme="dark"] [style*="background:#FAFBFF"]{background:var(--gray-100) !important;}
+  /* v2.1：field-hint 在 dark 下對比強化（原 --gray-400 太暗）*/
+  [data-theme="dark"] .field-hint{color:var(--gray-500);}
+  /* v2.1：details summary 在 dark 下字色加亮 */
+  [data-theme="dark"] details summary{color:var(--gray-700) !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--bg-page);color:var(--gray-800);font-size:14px;line-height:1.55;transition:background-color .2s, color .2s;width:100%;max-width:100%;overflow-x:hidden;}
   body{min-width:0;-webkit-text-size-adjust:100%;}
@@ -1634,27 +1640,27 @@ function openTaskModal(id) {
 
       <!-- v2.1：進度回報區塊（上移至狀態與評分之間；新版含執行計畫/成效/是否需修正三欄）-->
       <div class="field" style="margin-top:16px;">
-        <label class="field-label" style="font-weight:700;color:var(--primary);font-size:14px;">📝 進度回報</label>
+        <label class="field-label" style="font-weight:700;color:var(--primary);font-size:14px;text-shadow:0 0 0 currentColor;">📝 進度回報</label>
         ${data.notes && data.notes.length ? `
         <div style="background:var(--gray-50);border-radius:8px;padding:10px;margin-bottom:10px;max-height:280px;overflow-y:auto;border:1px solid var(--gray-200);">
           ${data.notes.map(n => renderNoteEntry(n)).join('')}
         </div>` : ''}
         <div style="border:1.5px dashed var(--primary-light);border-radius:10px;padding:12px;background:#FAFBFF;">
           <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:8px;">✍️ 新增本日進度（可留空）</div>
-          <label class="field-label" style="margin-top:0;font-weight:600;">🎯 執行計畫</label>
+          <label class="field-label" style="margin-top:0;font-weight:700;color:var(--gray-800);">🎯 執行計畫</label>
           <div style="position:relative;">
             <textarea class="field-textarea" id="f-note-plan" style="min-height:130px;" placeholder="例：今日已聯繫供應商X，等明日報價。&#10;・按列點按鈕可逐項羅列工作進度"></textarea>
             <button type="button" onclick="insertBullet('f-note-plan')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
           </div>
           <details style="margin-top:10px;">
-            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-700);font-weight:600;padding:4px 0;">💡 成效（選填，點此展開）</summary>
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-800);font-weight:600;padding:4px 0;">💡 成效（選填，點此展開）</summary>
             <div style="position:relative;margin-top:6px;">
               <textarea class="field-textarea" id="f-note-effect" style="min-height:80px;" placeholder="例：客戶回應正面、上門詢價較上週成長 15%。"></textarea>
               <button type="button" onclick="insertBullet('f-note-effect')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
             </div>
           </details>
           <details style="margin-top:8px;">
-            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-700);font-weight:600;padding:4px 0;">⚠️ 是否需修正（選填，點此展開）</summary>
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-800);font-weight:600;padding:4px 0;">⚠️ 是否需修正（選填，點此展開）</summary>
             <div style="position:relative;margin-top:6px;">
               <textarea class="field-textarea" id="f-note-needfix" style="min-height:80px;" placeholder="例：物流方案需重新評估、考慮改採宅配。"></textarea>
               <button type="button" onclick="insertBullet('f-note-needfix')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
