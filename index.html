@@ -448,7 +448,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v1.9.1 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.1 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -535,7 +535,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v1.9.1 雲端版
+// 任務卡佈告欄 ・ v2.1 雲端版（進度回報三欄結構化 + 即時時間戳記儲存）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1632,6 +1632,42 @@ function openTaskModal(id) {
         <div class="field-hint">✅ Done = 加分 ・ ❌ Failed = 扣分 ・ ⛔ Hold = 不計分</div>
       </div>
 
+      <!-- v2.1：進度回報區塊（上移至狀態與評分之間；新版含執行計畫/成效/是否需修正三欄）-->
+      <div class="field" style="margin-top:16px;">
+        <label class="field-label" style="font-weight:700;color:var(--primary);font-size:14px;">📝 進度回報</label>
+        ${data.notes && data.notes.length ? `
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px;margin-bottom:10px;max-height:280px;overflow-y:auto;border:1px solid var(--gray-200);">
+          ${data.notes.map(n => renderNoteEntry(n)).join('')}
+        </div>` : ''}
+        <div style="border:1.5px dashed var(--primary-light);border-radius:10px;padding:12px;background:#FAFBFF;">
+          <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:8px;">✍️ 新增本日進度（可留空）</div>
+          <label class="field-label" style="margin-top:0;font-weight:600;">🎯 執行計畫</label>
+          <div style="position:relative;">
+            <textarea class="field-textarea" id="f-note-plan" style="min-height:130px;" placeholder="例：今日已聯繫供應商X，等明日報價。&#10;・按列點按鈕可逐項羅列工作進度"></textarea>
+            <button type="button" onclick="insertBullet('f-note-plan')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
+          </div>
+          <details style="margin-top:10px;">
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-700);font-weight:600;padding:4px 0;">💡 成效（選填，點此展開）</summary>
+            <div style="position:relative;margin-top:6px;">
+              <textarea class="field-textarea" id="f-note-effect" style="min-height:80px;" placeholder="例：客戶回應正面、上門詢價較上週成長 15%。"></textarea>
+              <button type="button" onclick="insertBullet('f-note-effect')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
+            </div>
+          </details>
+          <details style="margin-top:8px;">
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-700);font-weight:600;padding:4px 0;">⚠️ 是否需修正（選填，點此展開）</summary>
+            <div style="position:relative;margin-top:6px;">
+              <textarea class="field-textarea" id="f-note-needfix" style="min-height:80px;" placeholder="例：物流方案需重新評估、考慮改採宅配。"></textarea>
+              <button type="button" onclick="insertBullet('f-note-needfix')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
+            </div>
+          </details>
+          ${!isNew ? `
+            <div style="margin-top:10px;text-align:right;">
+              <button type="button" class="btn btn-primary" style="padding:8px 18px;" onclick="saveProgressNote('${data.id}')">💾 進度儲存（即時時間戳記）</button>
+            </div>
+          ` : '<div class="field-hint" style="margin-top:8px;color:var(--gray-500);">新建任務需先按右下「建立任務」儲存後，才能即時儲存進度紀錄</div>'}
+        </div>
+      </div>
+
       ${canScore ? `
         <div style="margin-top:18px;padding:14px 14px 4px;border:1.5px dashed var(--primary-light);border-radius:10px;background:#F8FAFC;">
           <div style="font-weight:700;color:var(--primary);font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
@@ -1695,13 +1731,7 @@ function openTaskModal(id) {
         <div class="field-hint" id="attachHint">每張上限 ~50KB，超過自動壓縮</div>
       </div>
 
-      ${data.notes && data.notes.length ? `
-      <div class="field">
-        <label class="field-label">進度紀錄</label>
-        <div style="background:var(--gray-50);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--gray-700);max-height:140px;overflow-y:auto;">
-          ${data.notes.map(n => `<div style="padding:4px 0;border-bottom:1px dashed var(--gray-200);">[${iso(n.at).slice(0,10)} ${escapeHtml(n.by)}] ${escapeHtml(n.text)}</div>`).join('')}
-        </div>
-      </div>` : ''}
+      <!-- v2.1：舊「進度紀錄」區塊已合併進上方「📝 進度回報」 -->
 
       <!-- v1.6：任務時間軸 -->
       ${(data.id && (data.statusHistory||[]).length>0) ? `
@@ -1712,10 +1742,7 @@ function openTaskModal(id) {
         </div>
         <div class="field-hint">用這個時間軸看下屬的工作節奏——是分散規劃還是臨時抱佛腳</div>
       </div>` : ''}
-      <div class="field">
-        <label class="field-label">新增進度／回報（可留空）</label>
-        <textarea class="field-textarea" id="f-newnote" placeholder="例：今日已聯繫供應商 X，等明日報價。"></textarea>
-      </div>
+      <!-- v2.1：舊「新增進度／回報」textarea 已上移到「狀態（PDCA）」與「評分區塊」之間 -->
       ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${iso(data.createdAt).slice(0,16).replace('T',' ')}</p>`:''}
     `,
     foot: `
@@ -1732,7 +1759,11 @@ async function saveTask(id) {
   const get = sel => { const el = document.getElementById(sel); return el ? el.value.trim() : ''; };
   const title = get('f-title');
   if (!title) { showToast('任務名稱必填','error'); return; }
-  const newNote = get('f-newnote');
+  // v2.1：新進度回報結構（plan/effect/needFix 三欄）
+  const notePlan    = get('f-note-plan');
+  const noteEffect  = get('f-note-effect');
+  const noteNeedFix = get('f-note-needfix');
+  const newNote     = notePlan; // 至少要有執行計畫才算一筆
   const task = {
     id: id || '',
     company: currentCompany,
@@ -1774,7 +1805,7 @@ async function saveTask(id) {
   if (window._pendingAttachments) {
     task.attachments = window._pendingAttachments;
   }
-  if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, text:newNote }];
+  if (newNote) task.notes = [{ at:new Date().toISOString(), by:STATE.me.username, plan:notePlan, effect:noteEffect, needFix:noteNeedFix }];
 
   try {
     await api('saveTask', { task });
@@ -1839,9 +1870,21 @@ function renderReport(m) {
     ` : ''}
 
     <div class="report-card">
-      ${reportField('done',  '①','本週完成（≤3 件）', existing?.done||'',          'var(--green)','例：完成母親節活動素材 5 張、IG 觸及 ＋12%')}
-      ${reportField('block', '②','卡關／風險', existing?.blocking||'',              'var(--accent)','需要 Kevin執行長 幫忙的具體寫出來；無則寫「無」')}
-      ${reportField('next',  '③','下週重點（≤3 件）', existing?.nextWeek||'',       'var(--primary)','對齊本週軍令的北極星')}
+      <!-- v2.1：新三欄結構（對齊進度回報、對齊週報試算表）-->
+      <div style="background:#FAFBFF;border-left:3px solid var(--primary);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11.5px;color:var(--gray-600);">
+        💡 三欄與任務卡的「📝 進度回報」結構對齊。點下方任務卡的「✏️ 加入本週週報」按鈕可一鍵彙整。
+      </div>
+      ${reportField('plan',    '①','🎯 執行計畫（彙整本週任務）',  existing?.planText||'',    'var(--primary)','本週各任務的執行計畫；可從任務卡一鍵彙整')}
+      ${reportField('effect',  '②','💡 成效',                     existing?.effectText||'',  '#059669','本週實際達成的成果與數字')}
+      ${reportField('needFix', '③','⚠️ 是否需修正',                existing?.needFixText||'', '#D97706','本週遇到需調整的地方；無則寫「無」')}
+      <details style="margin-top:14px;padding:8px 12px;background:var(--gray-50);border-radius:8px;">
+        <summary style="cursor:pointer;font-size:12px;color:var(--gray-600);font-weight:500;">📁 v1 舊版欄位（向後相容，可選填／檢視歷史資料）</summary>
+        <div style="margin-top:10px;">
+          ${reportField('done',  '舊①','本週完成（≤3 件）', existing?.done||'',          'var(--green)','例：完成母親節活動素材 5 張、IG 觸及 ＋12%')}
+          ${reportField('block', '舊②','卡關／風險', existing?.blocking||'',              'var(--accent)','需要 Kevin執行長 幫忙的具體寫出來；無則寫「無」')}
+          ${reportField('next',  '舊③','下週重點（≤3 件）', existing?.nextWeek||'',       'var(--primary)','對齊本週軍令的北極星')}
+        </div>
+      </details>
       ${reportField('decide','④','我自己決定的事（L1/L2）', existing?.ownDecisions||'','var(--yellow)','列出來，培養做決定的肌肉')}
       ${reportField('mood',  '⑤','一句話心情', existing?.mood||'',                  'var(--gray-500)','這週累不累？哪裡有成就感？哪裡被卡？','input')}
 
@@ -1877,9 +1920,12 @@ function renderReport(m) {
           <strong>${r.weekId} ・ ${escapeHtml(r.username)}</strong>
           <span style="font-size:11px;color:var(--gray-400);">${iso(r.createdAt).slice(0,16).replace('T',' ')}</span>
         </div>
-        ${r.done?`<div style="font-size:12.5px;"><b style="color:var(--green);">✅ 完成：</b>${escapeHtml(r.done)}</div>`:''}
-        ${r.blocking?`<div style="font-size:12.5px;"><b style="color:var(--accent);">⚠️ 卡關：</b>${escapeHtml(r.blocking)}</div>`:''}
-        ${r.nextWeek?`<div style="font-size:12.5px;"><b style="color:var(--primary);">▶ 下週：</b>${escapeHtml(r.nextWeek)}</div>`:''}
+        ${r.planText?`<div style="font-size:12.5px;white-space:pre-wrap;"><b style="color:var(--primary);">🎯 執行計畫：</b>${escapeHtml(r.planText)}</div>`:''}
+        ${r.effectText?`<div style="font-size:12.5px;white-space:pre-wrap;"><b style="color:#059669;">💡 成效：</b>${escapeHtml(r.effectText)}</div>`:''}
+        ${r.needFixText?`<div style="font-size:12.5px;white-space:pre-wrap;"><b style="color:#D97706;">⚠️ 需修正：</b>${escapeHtml(r.needFixText)}</div>`:''}
+        ${r.done?`<div style="font-size:12.5px;color:var(--gray-500);"><b style="color:var(--green);">✅ 完成（舊）：</b>${escapeHtml(r.done)}</div>`:''}
+        ${r.blocking?`<div style="font-size:12.5px;color:var(--gray-500);"><b style="color:var(--accent);">⚠️ 卡關（舊）：</b>${escapeHtml(r.blocking)}</div>`:''}
+        ${r.nextWeek?`<div style="font-size:12.5px;color:var(--gray-500);"><b style="color:var(--primary);">▶ 下週（舊）：</b>${escapeHtml(r.nextWeek)}</div>`:''}
         ${r.mood?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px;"><i>"${escapeHtml(r.mood)}"</i></div>`:''}
       </div>
     `).join('') || `<div class="empty-state">尚無歷史週報</div>`}
@@ -1901,15 +1947,22 @@ function reportField(id, num, label, val, color, hint, type='area') {
 async function saveReport(withOneOnOne) {
   const wk = currentWeekId();
   const me = STATE.me;
+  // v2.1：新三欄優先，舊三欄保留向後相容
+  const getVal = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const report = {
     company: currentCompany,
     weekId: wk,
     username: me.username,
-    done:        document.getElementById('r-done').value.trim(),
-    blocking:    document.getElementById('r-block').value.trim(),
-    nextWeek:    document.getElementById('r-next').value.trim(),
-    ownDecisions:document.getElementById('r-decide').value.trim(),
-    mood:        document.getElementById('r-mood').value.trim(),
+    // v2.1 新三欄（對齊進度回報結構）
+    planText:    getVal('r-plan'),
+    effectText:  getVal('r-effect'),
+    needFixText: getVal('r-needFix'),
+    // v1 舊三欄（向後相容）
+    done:        getVal('r-done'),
+    blocking:    getVal('r-block'),
+    nextWeek:    getVal('r-next'),
+    ownDecisions:getVal('r-decide'),
+    mood:        getVal('r-mood'),
   };
   if (withOneOnOne) {
     report.oneOnOne = {
@@ -2161,11 +2214,16 @@ function renderTaskTimeline(task) {
       text: '🔄 ' + from + ' → ' + to,
     });
   });
-  // 進度紀錄事件
+  // 進度紀錄事件（v2.1：相容新結構 plan/effect/needFix 與舊結構 text）
   (task.notes||[]).forEach(n => {
+    let summary = '';
+    if (n.plan != null && n.plan) summary = n.plan;
+    else if (n.text) summary = n.text;
+    if (n.effect)  summary += '｜成效：' + n.effect;
+    if (n.needFix) summary += '｜需修正：' + n.needFix;
     events.push({
       at: n.at, by: n.by, type: 'note',
-      text: '💬 ' + (n.text || ''),
+      text: '💬 ' + summary,
     });
   });
   // 排序
@@ -2199,11 +2257,77 @@ function renderTaskTimeline(task) {
   `;
 }
 
+// v2.1：渲染一筆 note 紀錄（含時間戳記、執行計畫、成效、是否需修正；相容舊結構 text）
+function renderNoteEntry(n) {
+  const ts = iso(n.at).slice(0,16).replace('T',' ');
+  const by = escapeHtml(n.by || '');
+  const plan    = escapeHtml(n.plan != null ? n.plan : (n.text || ''));
+  const effect  = escapeHtml(n.effect || '');
+  const needFix = escapeHtml(n.needFix || '');
+  let html = `<div style="padding:8px 6px;border-bottom:1px dashed var(--gray-200);font-size:12.5px;line-height:1.55;">`;
+  html += `<div style="color:var(--gray-500);font-size:11px;margin-bottom:4px;">🕒 ${ts}　・　👤 ${by}</div>`;
+  if (plan)    html += `<div style="white-space:pre-wrap;"><strong style="color:var(--primary);">🎯 執行計畫：</strong>${plan}</div>`;
+  if (effect)  html += `<div style="white-space:pre-wrap;margin-top:4px;"><strong style="color:#059669;">💡 成效：</strong>${effect}</div>`;
+  if (needFix) html += `<div style="white-space:pre-wrap;margin-top:4px;"><strong style="color:#D97706;">⚠️ 需修正：</strong>${needFix}</div>`;
+  html += `</div>`;
+  return html;
+}
+
+// v2.1：在游標位置插入列點符號（・ ），若不在行首先換行
+function insertBullet(textareaId) {
+  const ta = document.getElementById(textareaId);
+  if (!ta) return;
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  const text = ta.value;
+  const before = text.slice(0, start);
+  const lastNL = before.lastIndexOf('\n');
+  const linePrefix = before.slice(lastNL + 1);
+  const insertion = (linePrefix.length === 0) ? '・ ' : '\n・ ';
+  ta.value = before + insertion + text.slice(end);
+  ta.focus();
+  const newPos = start + insertion.length;
+  ta.setSelectionRange(newPos, newPos);
+}
+
+// v2.1：即時儲存進度回報（不關 Modal，新增一筆有時間戳記的紀錄到 notes[]）
+async function saveProgressNote(taskId) {
+  const get = sel => { const el = document.getElementById(sel); return el ? el.value.trim() : ''; };
+  const plan    = get('f-note-plan');
+  const effect  = get('f-note-effect');
+  const needFix = get('f-note-needfix');
+  if (!plan) {
+    showToast('請至少填寫「🎯 執行計畫」才能儲存進度','error');
+    return;
+  }
+  const tasks = STATE.tasks[currentCompany] || [];
+  const existing = tasks.find(t => t.id === taskId);
+  if (!existing) { showToast('找不到任務，請先重整','error'); return; }
+  try {
+    const task = {
+      id: taskId,
+      company: existing.company,
+      title:   existing.title,
+      notes:   [{ at:new Date().toISOString(), by:STATE.me.username, plan, effect, needFix }],
+    };
+    await api('saveTask', { task });
+    const eP = document.getElementById('f-note-plan');    if (eP) eP.value = '';
+    const eE = document.getElementById('f-note-effect');  if (eE) eE.value = '';
+    const eN = document.getElementById('f-note-needfix'); if (eN) eN.value = '';
+    STATE = await api('getInitData'); cacheState();
+    const ts = new Date().toLocaleString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    showToast('✅ 進度已儲存（' + ts + '）','success');
+    openTaskModal(taskId);
+  } catch (e) {
+    showToast(e.message,'error');
+  }
+}
+
 // v1.6：一鍵把任務加入本週週報
 async function appendTaskToReport(taskId) {
   try {
     const r = await api('appendTaskToReport', { taskId });
-    showToast('已加入本週週報的「' + (r.field==='done'?'本週完成':r.field==='nextWeek'?'下週重點':'卡關／風險') + '」欄', 'success');
+    showToast('✅ 已彙整本週進度回報到週報（執行計畫／成效／需修正三欄，共 ' + (r.notesCount||0) + ' 筆紀錄）', 'success');
     STATE = await api('getInitData'); cacheState();
   } catch (e) {
     showToast(e.message, 'error');
