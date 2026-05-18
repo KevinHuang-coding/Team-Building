@@ -454,7 +454,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.1 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.2 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -541,7 +541,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v2.1 雲端版（進度回報三欄結構化 + 即時時間戳記儲存）
+// 任務卡佈告欄 ・ v2.2 雲端版（父子任務 UX 改造 + 看板膠囊分組）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1116,6 +1116,7 @@ function renderKanban(m) {
   const filtered = tasks.filter(t => {
     if (kanbanFilter.assignee !== '*' && t.assignee !== kanbanFilter.assignee) return false;
     if (kanbanFilter.status !== '*' && t.status !== kanbanFilter.status) return false;
+    if (t.parentTaskId) return false;  // v2.2：子任務不在狀態欄重複顯示，收進父任務內
     return true;
   });
   const grouped = { plan:[], do:[], check:[], done:[], hold:[], failed:[] };
@@ -1412,6 +1413,18 @@ function taskCard(t) {
           </div>
           <span style="font-size:10px;font-weight:700;color:var(--primary);">${doneChildren}/${children.length}</span>
         </div>
+        <!-- v2.2：子任務膠囊按鈕列（點任一膠囊展開該子任務 Modal）-->
+        ${children.length ? `
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+            ${children.map(c => {
+              const cStatus = STATUS[c.status] || {};
+              const cDone = c.status === 'done';
+              const cFail = c.status === 'failed';
+              const cIcon = cDone ? '✅' : cFail ? '❌' : (c.status==='do'?'🚀':c.status==='check'?'🔍':c.status==='hold'?'⛔':'📋');
+              return `<button type="button" onclick="event.stopPropagation();openTaskModal(${JSON.stringify(c.id)})" style="font-size:10.5px;padding:3px 8px;border-radius:11px;border:1px solid ${cDone?'var(--green)':cFail?'var(--accent)':'var(--gray-300)'};background:${cDone?'#ECFDF5':cFail?'#FEE2E2':'var(--bg-card)'};color:${cDone?'var(--green)':cFail?'var(--accent)':'var(--gray-700)'};cursor:pointer;${cDone?'text-decoration:line-through;':''}max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(c.title)} ・ ${escapeHtml(c.assignee||'')} ・ ${(cStatus.label||c.status)}">${cIcon} ${escapeHtml(c.title)}</button>`;
+            }).join('')}
+          </div>
+        ` : ''}
       ` : ''}
       ${isSilent ? `<div style="margin-top:6px;font-size:10px;color:#991B1B;font-weight:700;">⏳ 機動任務 ${silentDays} 天無進度，請確認是否被遺忘</div>` : ''}
     </div>
@@ -1512,27 +1525,64 @@ function openTaskModal(id) {
   showModal({
     title: isNew?'新建任務卡':'任務卡詳情',
     body: `
-      ${(isParentTask || isChildTask) ? `
-        <div style="background:${isParentTask?'#1F4E79':'#FEF3C7'};color:${isParentTask?'white':'#7C2D12'};padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px;">
-          ${isParentTask ? `📦 這是一張「專案父任務卡」 ・ 包含 ${childTasks.length} 個子任務（${childTasks.filter(t=>t.status==='done').length} 已完成）` : `↳ 這是「${escapeHtml(allTasks.find(t=>t.id===data.parentTaskId)?.title||'未知父任務')}」的子任務`}
-        </div>
-      ` : ''}
-
+      <!-- v2.2：父子任務 UX 整合（取代舊 banner + 父任務歸屬下拉 + 專案 KPI 三段獨立區塊）-->
       <div class="field">
         <label class="field-label">① 任務名稱 <span class="req">*</span></label>
         <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="動詞開頭，一句話講清楚要做什麼">
       </div>
 
-      ${(canCreateParent && !hasChildren) ? `
+      ${(() => {
+        const lockedParent = hasChildren;  // 已有子任務 → 強制鎖在「父任務」
+        const lockedChild  = isChildTask;  // 已被掛在父下 → 強制鎖在「子任務」
+        const noParentCandidates = parentCandidates.length === 0;
+        const canBeParent = canCreateParent && !isStaffUser && !isChildTask;
+        const canBeChild  = !hasChildren && !noParentCandidates;
+        const initialRel = lockedParent || data.isParent ? 'parent'
+                         : lockedChild  || data.parentTaskId ? 'child'
+                         : 'standalone';
+        return `
         <div class="field">
-          <label class="field-label">📦 父任務（選填）— 將本卡掛在某張專案卡底下</label>
+          <label class="field-label">② 任務層級</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <label style="flex:1;min-width:90px;cursor:${lockedParent||lockedChild?'not-allowed':'pointer'};opacity:${lockedParent||lockedChild?'.45':'1'};border:1.5px solid ${initialRel==='standalone'?'var(--primary)':'var(--gray-200)'};background:${initialRel==='standalone'?'var(--primary-light)':'transparent'};border-radius:8px;padding:8px 6px;font-size:12.5px;text-align:center;font-weight:600;">
+              <input type="radio" name="f-rel" value="standalone" ${initialRel==='standalone'?'checked':''} ${(lockedParent||lockedChild)?'disabled':''} onchange="toggleTaskRel(this.value)">
+              📌 獨立任務
+            </label>
+            <label style="flex:1;min-width:90px;cursor:${(!canBeParent||lockedChild)?'not-allowed':'pointer'};opacity:${(!canBeParent||lockedChild)?'.45':'1'};border:1.5px solid ${initialRel==='parent'?'#1F4E79':'var(--gray-200)'};background:${initialRel==='parent'?'var(--primary-light)':'transparent'};border-radius:8px;padding:8px 6px;font-size:12.5px;text-align:center;font-weight:600;">
+              <input type="radio" name="f-rel" value="parent" ${initialRel==='parent'?'checked':''} ${(!canBeParent||lockedChild)?'disabled':''} onchange="toggleTaskRel(this.value)">
+              📦 父任務
+            </label>
+            <label style="flex:1;min-width:90px;cursor:${(!canBeChild||lockedParent)?'not-allowed':'pointer'};opacity:${(!canBeChild||lockedParent)?'.45':'1'};border:1.5px solid ${initialRel==='child'?'#7C3AED':'var(--gray-200)'};background:${initialRel==='child'?'#F3E8FF':'transparent'};border-radius:8px;padding:8px 6px;font-size:12.5px;text-align:center;font-weight:600;">
+              <input type="radio" name="f-rel" value="child" ${initialRel==='child'?'checked':''} ${(!canBeChild||lockedParent)?'disabled':''} onchange="toggleTaskRel(this.value)">
+              ↳ 子任務
+            </label>
+          </div>
+          <div class="field-hint">${
+            lockedParent ? `已包含 ${childTasks.length} 個子任務，僅能維持為父任務`
+            : lockedChild ? `已歸屬於「${escapeHtml(allTasks.find(t=>t.id===data.parentTaskId)?.title||'未知父任務')}」`
+            : isStaffUser ? '員工只能建獨立任務或子任務（不能建專案父任務）'
+            : noParentCandidates ? '尚無可選父任務，需先建立父任務才能建子任務'
+            : '依層級切換下方欄位：父任務可填 KPI、子任務需選歸屬'
+          }</div>
+        </div>
+
+        <!-- 父任務專屬：KPI 輸入 -->
+        <div class="field" id="rel-parent-fields" style="display:${initialRel==='parent'?'block':'none'};">
+          <label class="field-label">🎯 專案長期 KPI（選填，僅父任務適用）</label>
+          <input class="field-input" id="f-projectKPI" value="${escapeHtml(data.projectKPI||'')}" placeholder="一句話量化目標。例：6 個月內新店開幕、首月營收 ≥ X 萬">
+          <div class="field-hint">填寫此欄會自動把本卡標記為「專案父任務卡」，可在底下拆解子任務</div>
+        </div>
+
+        <!-- 子任務專屬：歸屬父任務 -->
+        <div class="field" id="rel-child-fields" style="display:${initialRel==='child'?'block':'none'};">
+          <label class="field-label">📦 歸屬於哪個父任務 <span class="req">*</span></label>
           <select class="field-select" id="f-parent">
-            <option value="">（無）作為頂層任務</option>
+            <option value="">（請選擇父任務）</option>
             ${parentCandidates.map(t => `<option value="${escapeHtml(t.id)}" ${data.parentTaskId===t.id?'selected':''}>📦 ${escapeHtml(t.title)} ・ ${escapeHtml(t.assignee||'未指派')}</option>`).join('')}
           </select>
-          <div class="field-hint">不選則為頂層任務；可作為頂層後續再新增子任務變成父任務</div>
         </div>
-      ` : ''}
+        `;
+      })()}
 
       ${(!isChildTask && !hasChildren) ? `
         <div class="field">
@@ -1549,13 +1599,7 @@ function openTaskModal(id) {
         </div>
       ` : ''}
 
-      ${(canCreateParent && !isChildTask && !isStaffUser) ? `
-        <div class="field">
-          <label class="field-label">🎯 專案長期 KPI（選填，僅父任務適用）</label>
-          <input class="field-input" id="f-projectKPI" value="${escapeHtml(data.projectKPI||'')}" placeholder="一句話量化目標。例：6 個月內新店開幕、首月營收 ≥ X 萬">
-          <div class="field-hint">填寫此欄會自動把本卡標記為「專案父任務卡」，可在底下拆解子任務</div>
-        </div>
-      ` : ''}
+      <!-- v2.2：舊「專案 KPI」獨立區塊已整合到上方「② 任務層級」radio 下 -->
 
       ${hasChildren ? `
         <div class="field">
@@ -1791,13 +1835,23 @@ async function saveTask(id) {
     task.bonusPoints    = Number(get('f-bonusPoints')) || 0;
     task.bonusReason    = get('f-bonusReason');
   }
-  // v1.4：父子任務欄位
-  if (document.getElementById('f-parent')) {
-    task.parentTaskId = get('f-parent');
-  }
-  if (document.getElementById('f-projectKPI')) {
-    task.projectKPI = get('f-projectKPI');
-    task.isParent   = !!task.projectKPI;
+  // v2.2：父子任務 — 從 radio 推斷層級
+  const relEl = document.querySelector('input[name="f-rel"]:checked');
+  const rel = relEl ? relEl.value : 'standalone';
+  if (rel === 'parent') {
+    task.isParent     = true;
+    task.parentTaskId = '';
+    task.projectKPI   = get('f-projectKPI');
+  } else if (rel === 'child') {
+    const pid = get('f-parent');
+    if (!pid) { showToast('請選擇歸屬的父任務','error'); return; }
+    task.parentTaskId = pid;
+    task.isParent     = false;
+    task.projectKPI   = '';
+  } else {
+    task.parentTaskId = '';
+    task.isParent     = false;
+    task.projectKPI   = '';
   }
   // v1.6：任務類型 + 附檔
   const tt = document.querySelector('input[name="f-taskType"]:checked');
@@ -2261,6 +2315,31 @@ function renderTaskTimeline(task) {
       </div>
     `).join('')}
   `;
+}
+
+// v2.2：切換任務層級 radio 時，動態顯示對應子表單
+function toggleTaskRel(rel) {
+  const pFields = document.getElementById('rel-parent-fields');
+  const cFields = document.getElementById('rel-child-fields');
+  if (pFields) pFields.style.display = (rel === 'parent') ? 'block' : 'none';
+  if (cFields) cFields.style.display = (rel === 'child')  ? 'block' : 'none';
+  // 切換時清掉另一邊欄位的值，避免送出時混淆
+  if (rel !== 'parent') {
+    const kpi = document.getElementById('f-projectKPI'); if (kpi) kpi.value = '';
+  }
+  if (rel !== 'child') {
+    const par = document.getElementById('f-parent'); if (par) par.value = '';
+  }
+  // 同步 radio 選項視覺（border / background）
+  document.querySelectorAll('input[name="f-rel"]').forEach(r => {
+    const lb = r.closest('label');
+    if (!lb) return;
+    const isChecked = r.value === rel;
+    const palette = {standalone:'var(--primary)', parent:'#1F4E79', child:'#7C3AED'};
+    const bgPalette = {standalone:'var(--primary-light)', parent:'var(--primary-light)', child:'#F3E8FF'};
+    lb.style.borderColor = isChecked ? palette[r.value] : 'var(--gray-200)';
+    lb.style.background = isChecked ? bgPalette[r.value] : 'transparent';
+  });
 }
 
 // v2.1：渲染一筆 note 紀錄（含時間戳記、執行計畫、成效、是否需修正；相容舊結構 text）
