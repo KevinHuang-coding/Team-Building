@@ -1397,7 +1397,7 @@ function taskCard(t) {
   const isSilent = isAdhoc && ['plan','do','check','hold'].indexOf(t.status)>=0 && silentDays >= ADHOC_SILENT_DAYS;
 
   // v1.6：派發日期（距今天數）
-  const createdShort = iso(t.createdAt).slice(5,10).replace('-','/');
+  const createdShort = localDay(t.createdAt).slice(5).replace('-','/');
   const ageDays = t.createdAt ? Math.floor((new Date() - new Date(t.createdAt))/86400000) : 0;
 
   // v1.9：員工自建識別
@@ -1448,7 +1448,7 @@ function taskCard(t) {
 function computeTimeliness(t) {
   if (t.status !== 'done') return null;
   if (!t.deadline || !t.completedAt) return null;
-  const done = iso(t.completedAt).slice(0,10);
+  const done = localDay(t.completedAt);
   if (done < t.deadline)  return { tag:'early',  icon:'🚀 提前', bg:'#DBEAFE', color:'#1F4E79' };
   if (done === t.deadline) return { tag:'ontime', icon:'⏰ 準時', bg:'#FEF3C7', color:'#BF8F00' };
   return                          { tag:'late',   icon:'🐢 延誤', bg:'#FEE2E2', color:'#991B1B' };
@@ -1473,7 +1473,7 @@ function computeSuggestedBonus(t) {
   if (tm.tag === 'ontime') return { points: 1,  reason: '⏰ 準時完成 (+1)' };
   // 延誤：按天數加重，最多 -10
   if (tm.tag === 'late') {
-    const done = new Date(iso(t.completedAt).slice(0,10));
+    const done = new Date(localDay(t.completedAt));
     const deadline = new Date(t.deadline);
     const days = Math.round((done - deadline) / 86400000);
     const weeks = Math.ceil(days / 7);
@@ -1805,7 +1805,7 @@ function openTaskModal(id) {
 
       <!-- v2.3p：任務時間軸已上移至「📝 進度回報」標題下方 -->
       <!-- v2.1：舊「新增進度／回報」textarea 已上移到「狀態（PDCA）」與「評分區塊」之間 -->
-      ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${iso(data.createdAt).slice(0,16).replace('T',' ')}</p>`:''}
+      ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${fmtLocal(data.createdAt)}</p>`:''}
     `,
     foot: `
       ${(!isNew && canDelete) ? `<button class="btn btn-danger" onclick="deleteTask('${data.id}')">刪除</button>` : ''}
@@ -1990,7 +1990,7 @@ function renderReport(m) {
       <div class="report-card" style="padding:14px 18px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <strong>${r.weekId} ・ ${escapeHtml(r.username)}</strong>
-          <span style="font-size:11px;color:var(--gray-400);">${iso(r.createdAt).slice(0,16).replace('T',' ')}</span>
+          <span style="font-size:11px;color:var(--gray-400);">${fmtLocal(r.createdAt)}</span>
         </div>
         ${r.planText?`<div style="font-size:12.5px;white-space:pre-wrap;"><b style="color:var(--primary);">🎯 執行計畫：</b>${escapeHtml(r.planText)}</div>`:''}
         ${r.effectText?`<div style="font-size:12.5px;white-space:pre-wrap;"><b style="color:#059669;">💡 成效：</b>${escapeHtml(r.effectText)}</div>`:''}
@@ -2303,7 +2303,7 @@ function renderTaskTimeline(task) {
   events.sort((a,b) => iso(a.at).localeCompare(iso(b.at)));
 
   // 計算間隔（看是不是「臨時抱佛腳」）
-  const dates = events.map(e => iso(e.at).slice(0,10)).filter(Boolean);
+  const dates = events.map(e => localDay(e.at)).filter(Boolean);
   const uniqueDates = Array.from(new Set(dates));
   const activeDays = uniqueDates.length;
   const totalDays = task.createdAt && task.completedAt
@@ -2322,7 +2322,7 @@ function renderTaskTimeline(task) {
     </div>
     ${events.filter(ev => ev.type !== 'note').map(ev => `
       <div style="padding:5px 0;border-bottom:1px dashed var(--gray-200);">
-        <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${iso(ev.at).slice(0,16).replace('T',' ')}</span>
+        <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${fmtLocal(ev.at)}</span>
         <span style="color:var(--gray-500);margin-left:6px;">${escapeHtml(ev.by||'')}</span>
         <div style="margin-top:2px;">${escapeHtml(ev.text)}</div>
       </div>
@@ -2357,7 +2357,7 @@ function toggleTaskRel(rel) {
 
 // v2.3：渲染一筆 note 紀錄（含時間戳記、三欄內容、相容舊 text；新增：作者本人可內嵌編輯）
 function renderNoteEntry(n, idx, taskId) {
-  const ts = iso(n.at).slice(0,16).replace('T',' ');
+  const ts = fmtLocal(n.at);
   const by = escapeHtml(n.by || '');
   const rawPlan    = n.plan != null ? n.plan : (n.text || '');
   const rawEffect  = n.effect  || '';
@@ -2368,7 +2368,7 @@ function renderNoteEntry(n, idx, taskId) {
   const me = (typeof STATE !== 'undefined' && STATE.me) ? STATE.me : {};
   const canEditNote = !!(n.by && n.by === me.username);   // v2.3：僅作者本人可編輯
   const editedTag = n.editedAt
-    ? `<span style="color:var(--gray-400);font-size:10px;">（已編輯 ${iso(n.editedAt).slice(0,16).replace('T',' ')}）</span>`
+    ? `<span style="color:var(--gray-400);font-size:10px;">（已編輯 ${fmtLocal(n.editedAt)}）</span>`
     : '';
   let html = `<div style="padding:8px 6px;border-bottom:1px dashed var(--gray-200);font-size:12.5px;line-height:1.55;">`;
   // 唯讀檢視
@@ -2470,7 +2470,7 @@ async function saveProgressNote(taskId) {
     const eE = document.getElementById('f-note-effect');  if (eE) eE.value = '';
     const eN = document.getElementById('f-note-needfix'); if (eN) eN.value = '';
     STATE = await api('getInitData'); cacheState();
-    const ts = new Date().toLocaleString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    const ts = new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit'});
     showToast('✅ 進度已儲存（' + ts + '）','success');
     openTaskModal(taskId);
   } catch (e) {
@@ -2624,7 +2624,7 @@ function renderOgsm(m) {
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">OGSM 戰略表</h2>
-      <p class="page-sub">${COMPANY_LABEL[company]} ・ Kevin執行長 限定 ・ 最後更新 ${iso(o.lastUpdated).slice(0,16).replace('T',' ') || '尚未更新'}</p>
+      <p class="page-sub">${COMPANY_LABEL[company]} ・ Kevin執行長 限定 ・ 最後更新 ${fmtLocal(o.lastUpdated) || '尚未更新'}</p>
     </div>
 
     <details class="help-block">
@@ -2966,6 +2966,33 @@ function iso(v) {
   if (typeof v === 'number') return new Date(v).toISOString();
   // 物件且有可能是 Date 序列化後變成奇怪格式
   try { return new Date(v).toISOString(); } catch (e) { return ''; }
+}
+
+// v2.3p2：把任意 timestamp 轉成台北時間（Asia/Taipei），解決前端顯示 UTC 少 8 小時的問題
+function _twParts(v) {
+  const isoStr = iso(v);
+  if (!isoStr) return null;
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const g = t => { const x = parts.find(p => p.type === t); return x ? x.value : ''; };
+  let hh = g('hour'); if (hh === '24') hh = '00';
+  return { date: g('year') + '-' + g('month') + '-' + g('day'), time: hh + ':' + g('minute') };
+}
+// 台北時間 YYYY-MM-DD HH:mm（所有含時分的時間顯示一律用這個）
+function fmtLocal(v) {
+  const p = _twParts(v);
+  if (p) return p.date + ' ' + p.time;
+  const ss = iso(v); return ss ? ss.slice(0,16).replace('T',' ') : '';
+}
+// 台北日期 YYYY-MM-DD（純日期顯示、或與 deadline 比較一律用這個）
+function localDay(v) {
+  const p = _twParts(v);
+  if (p) return p.date;
+  const ss = iso(v); return ss ? ss.slice(0,10) : '';
 }
 
 function escapeHtml(s) {
