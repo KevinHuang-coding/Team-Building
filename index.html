@@ -133,6 +133,19 @@
   [data-theme="dark"] .field-hint{color:var(--gray-500);}
   /* v2.1：details summary 在 dark 下字色加亮 */
   [data-theme="dark"] details summary{color:var(--gray-700) !important;}
+
+  /* ===== v2.3 Dark mode 對比批量強化（品牌色／強調色當文字在深色背景過暗）===== */
+  [data-theme="dark"] [style*="color:var(--primary)"]{color:#8FB4DD !important;}
+  [data-theme="dark"] [style*="color:#1F4E79"]{color:#8FB4DD !important;}
+  [data-theme="dark"] [style*="color:var(--accent)"]{color:#F87171 !important;}
+  [data-theme="dark"] [style*="color:#C00000"]{color:#F87171 !important;}
+  [data-theme="dark"] [style*="color:var(--green)"]{color:#5FD68A !important;}
+  [data-theme="dark"] [style*="color:var(--yellow)"]{color:#E8C04A !important;}
+  [data-theme="dark"] [style*="color:var(--orange)"]{color:#F0945A !important;}
+  [data-theme="dark"] [style*="color:#059669"]{color:#34D399 !important;}
+  [data-theme="dark"] [style*="color:#D97706"]{color:#FBBF24 !important;}
+  [data-theme="dark"] [style*="background:#F8FAFC"]{background:var(--gray-100) !important;}
+  [data-theme="dark"] .kanban-col[data-status="failed"]{background:#2E1A1A !important;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",-apple-system,sans-serif;background:var(--bg-page);color:var(--gray-800);font-size:14px;line-height:1.55;transition:background-color .2s, color .2s;width:100%;max-width:100%;overflow-x:hidden;}
   body{min-width:0;-webkit-text-size-adjust:100%;}
@@ -454,7 +467,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.2 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.3 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -541,7 +554,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v2.2 雲端版（父子任務 UX 改造 + 看板膠囊分組）
+// 任務卡佈告欄 ・ v2.3 雲端版（員工父任務 + 進度回報可編輯 + dark mode 對比強化）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1535,7 +1548,7 @@ function openTaskModal(id) {
         const lockedParent = hasChildren;  // 已有子任務 → 強制鎖在「父任務」
         const lockedChild  = isChildTask;  // 已被掛在父下 → 強制鎖在「子任務」
         const noParentCandidates = parentCandidates.length === 0;
-        const canBeParent = canCreateParent && !isStaffUser && !isChildTask;
+        const canBeParent = !isChildTask;  // v2.3：父任務開放所有角色（含員工）
         const canBeChild  = !hasChildren && !noParentCandidates;
         const initialRel = lockedParent || data.isParent ? 'parent'
                          : lockedChild  || data.parentTaskId ? 'child'
@@ -1560,7 +1573,6 @@ function openTaskModal(id) {
           <div class="field-hint">${
             lockedParent ? `已包含 ${childTasks.length} 個子任務，僅能維持為父任務`
             : lockedChild ? `已歸屬於「${escapeHtml(allTasks.find(t=>t.id===data.parentTaskId)?.title||'未知父任務')}」`
-            : isStaffUser ? '員工只能建獨立任務或子任務（不能建專案父任務）'
             : noParentCandidates ? '尚無可選父任務，需先建立父任務才能建子任務'
             : '依層級切換下方欄位：父任務可填 KPI、子任務需選歸屬'
           }</div>
@@ -1687,7 +1699,7 @@ function openTaskModal(id) {
         <label class="field-label" style="font-weight:700;color:var(--primary);font-size:14px;text-shadow:0 0 0 currentColor;">📝 進度回報</label>
         ${data.notes && data.notes.length ? `
         <div style="background:var(--gray-50);border-radius:8px;padding:10px;margin-bottom:10px;max-height:280px;overflow-y:auto;border:1px solid var(--gray-200);">
-          ${data.notes.map(n => renderNoteEntry(n)).join('')}
+          ${data.notes.map((n,i) => renderNoteEntry(n, i, data.id)).join('')}
         </div>` : ''}
         <div style="border:1.5px dashed var(--primary-light);border-radius:10px;padding:12px;background:#FAFBFF;">
           <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:8px;">✍️ 新增本日進度（可留空）</div>
@@ -2342,20 +2354,77 @@ function toggleTaskRel(rel) {
   });
 }
 
-// v2.1：渲染一筆 note 紀錄（含時間戳記、執行計畫、成效、是否需修正；相容舊結構 text）
-function renderNoteEntry(n) {
+// v2.3：渲染一筆 note 紀錄（含時間戳記、三欄內容、相容舊 text；新增：作者本人可內嵌編輯）
+function renderNoteEntry(n, idx, taskId) {
   const ts = iso(n.at).slice(0,16).replace('T',' ');
   const by = escapeHtml(n.by || '');
-  const plan    = escapeHtml(n.plan != null ? n.plan : (n.text || ''));
-  const effect  = escapeHtml(n.effect || '');
-  const needFix = escapeHtml(n.needFix || '');
+  const rawPlan    = n.plan != null ? n.plan : (n.text || '');
+  const rawEffect  = n.effect  || '';
+  const rawNeedFix = n.needFix || '';
+  const plan    = escapeHtml(rawPlan);
+  const effect  = escapeHtml(rawEffect);
+  const needFix = escapeHtml(rawNeedFix);
+  const me = (typeof STATE !== 'undefined' && STATE.me) ? STATE.me : {};
+  const canEditNote = !!(n.by && n.by === me.username);   // v2.3：僅作者本人可編輯
+  const editedTag = n.editedAt
+    ? `<span style="color:var(--gray-400);font-size:10px;">（已編輯 ${iso(n.editedAt).slice(0,16).replace('T',' ')}）</span>`
+    : '';
   let html = `<div style="padding:8px 6px;border-bottom:1px dashed var(--gray-200);font-size:12.5px;line-height:1.55;">`;
-  html += `<div style="color:var(--gray-500);font-size:11px;margin-bottom:4px;">🕒 ${ts}　・　👤 ${by}</div>`;
+  // 唯讀檢視
+  html += `<div id="note-view-${idx}">`;
+  html += `<div style="color:var(--gray-500);font-size:11px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;">`;
+  html += `<span>🕒 ${ts}　・　👤 ${by} ${editedTag}</span>`;
+  if (canEditNote) html += `<button type="button" onclick="toggleNoteEdit(${idx})" style="flex:none;padding:2px 8px;font-size:10.5px;background:var(--bg-card);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--primary);">✏️ 編輯</button>`;
+  html += `</div>`;
   if (plan)    html += `<div style="white-space:pre-wrap;"><strong style="color:var(--primary);">🎯 執行計畫：</strong>${plan}</div>`;
   if (effect)  html += `<div style="white-space:pre-wrap;margin-top:4px;"><strong style="color:#059669;">💡 成效：</strong>${effect}</div>`;
   if (needFix) html += `<div style="white-space:pre-wrap;margin-top:4px;"><strong style="color:#D97706;">⚠️ 需修正：</strong>${needFix}</div>`;
   html += `</div>`;
+  // 內嵌編輯表單（預設隱藏，僅作者本人渲染）
+  if (canEditNote) {
+    html += `<div id="note-edit-${idx}" style="display:none;padding-top:4px;">`;
+    html += `<div style="color:var(--gray-500);font-size:11px;margin-bottom:6px;">✏️ 編輯這筆進度（🕒 ${ts}）</div>`;
+    html += `<label class="field-label" style="margin-top:0;font-size:11.5px;">🎯 執行計畫</label>`;
+    html += `<textarea class="field-textarea" id="edit-note-plan-${idx}" style="min-height:90px;">${plan}</textarea>`;
+    html += `<label class="field-label" style="font-size:11.5px;">💡 成效（選填）</label>`;
+    html += `<textarea class="field-textarea" id="edit-note-effect-${idx}" style="min-height:60px;">${effect}</textarea>`;
+    html += `<label class="field-label" style="font-size:11.5px;">⚠️ 是否需修正（選填）</label>`;
+    html += `<textarea class="field-textarea" id="edit-note-needfix-${idx}" style="min-height:60px;">${needFix}</textarea>`;
+    html += `<div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end;">`;
+    html += `<button type="button" class="btn btn-ghost" style="padding:5px 12px;font-size:11.5px;" onclick="toggleNoteEdit(${idx})">取消</button>`;
+    html += `<button type="button" class="btn btn-primary" style="padding:5px 14px;font-size:11.5px;" onclick="updateProgressNote('${taskId}', ${idx})">💾 儲存修改</button>`;
+    html += `</div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
   return html;
+}
+
+// v2.3：切換某筆 note 的「唯讀 / 編輯」顯示
+function toggleNoteEdit(idx) {
+  const v = document.getElementById('note-view-' + idx);
+  const e = document.getElementById('note-edit-' + idx);
+  if (!v || !e) return;
+  const toEdit = (e.style.display === 'none');
+  v.style.display = toEdit ? 'none' : 'block';
+  e.style.display = toEdit ? 'block' : 'none';
+}
+
+// v2.3：儲存對既有 note 的修改（呼叫後端 updateNote；僅作者本人）
+async function updateProgressNote(taskId, idx) {
+  const get = sel => { const el = document.getElementById(sel); return el ? el.value.trim() : ''; };
+  const plan    = get('edit-note-plan-' + idx);
+  const effect  = get('edit-note-effect-' + idx);
+  const needFix = get('edit-note-needfix-' + idx);
+  if (!plan) { showToast('「🎯 執行計畫」不可為空','error'); return; }
+  try {
+    await api('updateNote', { taskId, noteIndex: idx, note: { plan, effect, needFix } });
+    STATE = await api('getInitData'); cacheState();
+    showToast('✅ 進度已更新','success');
+    openTaskModal(taskId);
+  } catch (e) {
+    showToast(e.message,'error');
+  }
 }
 
 // v2.1：在游標位置插入列點符號（・ ），若不在行首先換行
