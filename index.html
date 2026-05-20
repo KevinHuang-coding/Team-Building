@@ -1697,6 +1697,14 @@ function openTaskModal(id) {
       <!-- v2.1：進度回報區塊（上移至狀態與評分之間；新版含執行計畫/成效/是否需修正三欄）-->
       <div class="field" style="margin-top:16px;">
         <label class="field-label" style="font-weight:700;color:var(--primary);font-size:14px;text-shadow:0 0 0 currentColor;">📝 進度回報</label>
+        ${(data.id && (data.statusHistory||[]).length>0) ? `
+        <div style="margin:6px 0 10px;">
+          <div style="font-weight:600;font-size:12px;color:var(--gray-700);margin-bottom:4px;">📜 任務時間軸（${(data.statusHistory||[]).length} 個事件）</div>
+          <div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--gray-700);max-height:200px;overflow-y:auto;">
+            ${renderTaskTimeline(data)}
+          </div>
+          <div class="field-hint">用這個時間軸看下屬的工作節奏——是分散規劃還是臨時抱佛腳</div>
+        </div>` : ''}
         ${data.notes && data.notes.length ? `
         <div style="background:var(--gray-50);border-radius:8px;padding:10px;margin-bottom:10px;max-height:280px;overflow-y:auto;border:1px solid var(--gray-200);">
           ${data.notes.map((n,i) => renderNoteEntry(n, i, data.id)).join('')}
@@ -1795,15 +1803,7 @@ function openTaskModal(id) {
 
       <!-- v2.1：舊「進度紀錄」區塊已合併進上方「📝 進度回報」 -->
 
-      <!-- v1.6：任務時間軸 -->
-      ${(data.id && (data.statusHistory||[]).length>0) ? `
-      <div class="field">
-        <label class="field-label">📜 任務時間軸（${(data.statusHistory||[]).length} 個事件）</label>
-        <div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--gray-700);max-height:200px;overflow-y:auto;">
-          ${renderTaskTimeline(data)}
-        </div>
-        <div class="field-hint">用這個時間軸看下屬的工作節奏——是分散規劃還是臨時抱佛腳</div>
-      </div>` : ''}
+      <!-- v2.3p：任務時間軸已上移至「📝 進度回報」標題下方 -->
       <!-- v2.1：舊「新增進度／回報」textarea 已上移到「狀態（PDCA）」與「評分區塊」之間 -->
       ${!isNew?`<p class="field-hint">建立者：${escapeHtml(data.creator)} ・ 建立於 ${iso(data.createdAt).slice(0,16).replace('T',' ')}</p>`:''}
     `,
@@ -2267,6 +2267,7 @@ function jumpToOverdue() {
 }
 
 // v1.6：渲染任務時間軸（合併 statusHistory + notes，按時間排序）
+// v2.3p：notes 僅用於工作節奏計算，不再列入時間軸明細（明細交給可編輯的進度卡片）
 function renderTaskTimeline(task) {
   const events = [];
   // 建立事件
@@ -2319,7 +2320,7 @@ function renderTaskTimeline(task) {
     <div style="margin-bottom:8px;padding:8px;background:white;border-radius:6px;font-size:11px;color:var(--gray-600);">
       <b>工作節奏觀察</b>：${totalDays} 天內有活動的天數 = ${activeDays} 天（${engagementPct}%）　${engagementLabel}
     </div>
-    ${events.map(ev => `
+    ${events.filter(ev => ev.type !== 'note').map(ev => `
       <div style="padding:5px 0;border-bottom:1px dashed var(--gray-200);">
         <span style="color:var(--gray-400);font-family:monospace;font-size:10px;">${iso(ev.at).slice(0,16).replace('T',' ')}</span>
         <span style="color:var(--gray-500);margin-left:6px;">${escapeHtml(ev.by||'')}</span>
