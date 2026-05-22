@@ -244,11 +244,17 @@
   @media(max-width:768px){
     .perf-grid{grid-template-columns:repeat(2,1fr);}
   }
+  /* 考績總覽收折 */
+  .perf-banner-wrap{margin-bottom:14px;}
+  .perf-banner-summary{display:flex;align-items:center;cursor:pointer;background:linear-gradient(135deg,#1F4E79,#2D5F8E);color:white;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:800;list-style:none;box-shadow:var(--shadow);user-select:none;}
+  .perf-banner-summary::-webkit-details-marker{display:none;}
+  .perf-banner-wrap[open]>.perf-banner-summary{border-radius:12px 12px 0 0;}
+  .perf-banner-wrap>.perf-banner{margin-top:0;border-radius:0 0 12px 12px;}
 
   /* ===== Kanban ===== */
   .kanban{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;margin-top:8px;}
   .kanban-col{background:var(--bg-kanban-col);border-radius:10px;padding:10px;min-height:240px;}
-  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:10px;padding:0 4px;}
+  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--gray-700);margin:-10px -10px 10px;padding:10px 14px;position:sticky;top:50px;z-index:5;background:var(--bg-kanban-col);border-radius:10px 10px 0 0;}
   .kanban-col-count{background:var(--bg-card);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-size:11px;}
   .kanban-col[data-status="plan"] .kanban-col-head{color:var(--gray-700);}
   .kanban-col[data-status="do"] .kanban-col-head{color:var(--primary);}
@@ -1269,7 +1275,10 @@ function renderKanban(m) {
   `;
 
   // 綁定事件
-  m.querySelectorAll('.task-card').forEach(c => c.addEventListener('click', () => openTaskModal(c.dataset.id)));
+  m.querySelectorAll('.task-card').forEach(c => c.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;  // 子任務膠囊按鈕自行處理，不觸發父任務 Modal
+    openTaskModal(c.dataset.id);
+  }));
   m.querySelectorAll('.member-tab').forEach(b => b.addEventListener('click', () => {
     kanbanFilter.assignee = b.dataset.assignee;
     go('kanban');
@@ -1353,19 +1362,24 @@ function computeMemberScore(allTasks, assignee) {
 
 function perfBanner(p) {
   return `
-    <div class="perf-banner">
-      <h3>👤 ${escapeHtml(p.name)} ・ 考績總覽</h3>
-      <div class="perf-banner-sub">含全部任務統計 ・ 公式：完成分 − 失敗分 + 加減分</div>
-      <div class="perf-grid">
-        <div class="perf-stat"><div class="perf-stat-label">✅ 完成</div><div class="perf-stat-value">${p.done}</div><div class="perf-stat-sub">基礎分 +${p.baseScore}</div></div>
-        <div class="perf-stat"><div class="perf-stat-label">❌ 失敗</div><div class="perf-stat-value">${p.failed}</div><div class="perf-stat-sub">扣分 −${p.failScore}</div></div>
-        <div class="perf-stat"><div class="perf-stat-label">指揮加減</div><div class="perf-stat-value" style="color:${p.bonusScore<0?'#FCA5A5':'#A7F3D0'};">${p.bonusScore>=0?'+':''}${p.bonusScore}</div><div class="perf-stat-sub">手動調整</div></div>
-        <div class="perf-stat perf-total"><div class="perf-stat-label">🏆 年度總分</div><div class="perf-stat-value">${p.totalScore>=0?'+':''}${p.totalScore}</div><div class="perf-stat-sub">複雜${p.avgComp} ・ 技術${p.avgTech}</div></div>
+    <details class="perf-banner-wrap">
+      <summary class="perf-banner-summary">
+        👤 ${escapeHtml(p.name)} ・ 考績總覽
+        <span style="font-size:11px;font-weight:400;opacity:.7;margin-left:auto;padding-left:12px;">▶ 點擊展開</span>
+      </summary>
+      <div class="perf-banner">
+        <div class="perf-banner-sub">含全部任務統計 ・ 公式：完成分 − 失敗分 + 加減分</div>
+        <div class="perf-grid">
+          <div class="perf-stat"><div class="perf-stat-label">✅ 完成</div><div class="perf-stat-value">${p.done}</div><div class="perf-stat-sub">基礎分 +${p.baseScore}</div></div>
+          <div class="perf-stat"><div class="perf-stat-label">❌ 失敗</div><div class="perf-stat-value">${p.failed}</div><div class="perf-stat-sub">扣分 −${p.failScore}</div></div>
+          <div class="perf-stat"><div class="perf-stat-label">指揮加減</div><div class="perf-stat-value" style="color:${p.bonusScore<0?'#FCA5A5':'#A7F3D0'};">${p.bonusScore>=0?'+':''}${p.bonusScore}</div><div class="perf-stat-sub">手動調整</div></div>
+          <div class="perf-stat perf-total"><div class="perf-stat-label">🏆 年度總分</div><div class="perf-stat-value">${p.totalScore>=0?'+':''}${p.totalScore}</div><div class="perf-stat-sub">複雜${p.avgComp} ・ 技術${p.avgTech}</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;opacity:.75;">
+          進行中 ${p.inProgress} ・ 卡關 ${p.hold} ・ 共 ${p.totalTasks} 件
+        </div>
       </div>
-      <div style="margin-top:10px;font-size:11px;opacity:.75;">
-        進行中 ${p.inProgress} ・ 卡關 ${p.hold} ・ 共 ${p.totalTasks} 件
-      </div>
-    </div>
+    </details>
   `;
 }
 function taskCard(t) {
