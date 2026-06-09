@@ -451,6 +451,25 @@
   .pwd-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;padding:6px 8px;line-height:1;}
   .pwd-eye:hover{color:var(--primary);}
   .pwd-eye:focus{outline:none;color:var(--primary);}
+
+  /* ===== v2.5：客戶開發甘特圖 ===== */
+  .gantt-wrap{overflow-x:auto;border:1px solid var(--gray-200);border-radius:10px;background:var(--bg-card);position:relative;max-height:72vh;}
+  .gantt-head{position:sticky;top:0;z-index:5;background:var(--bg-card);border-bottom:1px solid var(--gray-200);}
+  .gantt-label-col{position:sticky;left:0;z-index:6;background:var(--bg-card);border-right:1px solid var(--gray-200);min-width:210px;max-width:210px;box-sizing:border-box;}
+  .gantt-day{display:inline-block;width:26px;flex:none;text-align:center;font-size:11px;color:var(--gray-500);border-left:1px solid var(--gray-100);box-sizing:border-box;}
+  .gantt-day.weekend{background:rgba(192,0,0,.08);}
+  .gantt-day.today{box-shadow:inset 2px 0 0 var(--accent);font-weight:800;color:var(--accent);}
+  .gantt-col{position:absolute;top:0;bottom:0;border-left:1px solid var(--gray-100);box-sizing:border-box;pointer-events:none;}
+  .gantt-col.weekend{background:rgba(192,0,0,.08);}
+  .gantt-col.today{box-shadow:inset 2px 0 0 var(--accent);}
+  .gantt-row{display:flex;align-items:center;height:40px;border-bottom:1px solid var(--gray-100);cursor:pointer;}
+  .gantt-row:hover .gantt-label-col{background:var(--gray-50);}
+  .gantt-bar{position:absolute;height:24px;border-radius:6px;display:flex;align-items:center;padding:0 8px;color:#fff;font-size:11px;font-weight:600;overflow:hidden;white-space:nowrap;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+  .gantt-group-head{display:flex;align-items:center;gap:8px;padding:8px 12px;font-weight:800;font-size:13px;background:var(--gray-50);position:sticky;left:0;z-index:4;border-bottom:1px solid var(--gray-200);}
+  .gantt-fbtn{padding:4px 10px;font-size:12px;border:1px solid var(--gray-200);background:var(--bg-card);color:var(--gray-500);border-radius:999px;cursor:pointer;}
+  .gantt-fbtn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  [data-theme="dark"] .gantt-day.weekend,[data-theme="dark"] .gantt-col.weekend{background:rgba(192,0,0,.18);}
+  [data-theme="dark"] .gantt-label-col,[data-theme="dark"] .gantt-head{background:var(--bg-card);}
 </style>
 </head>
 <body>
@@ -476,7 +495,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.3 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.5 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -563,7 +582,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v2.3 雲端版（員工父任務 + 進度回報可編輯 + dark mode 對比強化）
+// 任務卡佈告欄 ・ v2.5 雲端版（客戶開發甘特圖頁面 + bizDev 分類欄位）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -1011,6 +1030,7 @@ function renderSideNav() {
     { key:'kanban', icon:'📋', label:'任務看板' },
     { key:'report', icon:'📝', label:'週報 / 一對一' },
     { key:'pdca',   icon:'📊', label:'PDCA 儀表' },
+    { key:'gantt',  icon:'📈', label:'客戶開發甘特圖' },   // v2.5：全員可見
   ];
   if (STATE.me.isLord || STATE.me.role === 'admin') {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
@@ -1040,6 +1060,7 @@ function go(page) {
     kanban: renderKanban,
     report: renderReport,
     pdca:   renderPdca,
+    gantt:  renderGantt,
     people: renderPeople,
     ogsm:   renderOgsm,
     scoreboard: renderScoreboard,
@@ -1385,6 +1406,181 @@ function perfBanner(p) {
     </details>
   `;
 }
+
+// ── v2.5：客戶開發甘特圖 ──────────────────────────────
+function renderGantt(m) {
+  const DAY_W = 26;
+  const all = (STATE.tasks?.[currentCompany]) || [];
+  const items = all.filter(t => t.bizDev === 'b2b' || t.bizDev === 'b2c');
+
+  if (!window._ganttFilter) window._ganttFilter = { biz:'all', showDone:true };
+  const gf = window._ganttFilter;
+
+  const todayStr = localDay(new Date().toISOString());
+
+  // 日期工具：全程走字串 YYYY-MM-DD（避免 toISOString 的 UTC 坑 1／坑 9）
+  const parseYmd = s => { const [y,mo,d] = s.split('-').map(Number); return new Date(y, mo-1, d); };
+  const ymd = dt => { const p = n => String(n).padStart(2,'0'); return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); };
+  const addDays = (s,n) => { const dt = parseYmd(s); dt.setDate(dt.getDate()+n); return ymd(dt); };
+  const diffDays = (a,b) => Math.round((parseYmd(b) - parseYmd(a)) / 86400000); // b - a（日數差）
+
+  // 每張卡時間區間：起點＝派發日；完成→定格完成日；有未到期截止→延伸到截止；否則→今天（每天自動長）
+  function ganttRange(t){
+    let start = localDay(t.createdAt) || t.deadline || todayStr;
+    let end;
+    if (t.status === 'done' && t.completedAt) end = localDay(t.completedAt);
+    else if (t.deadline && t.deadline >= todayStr) end = t.deadline;
+    else end = todayStr;
+    if (end < start) end = start;
+    return { start, end };
+  }
+
+  const withRange = items.map(t => Object.assign({ t }, ganttRange(t)));
+  const b2bCount = items.filter(t => t.bizDev === 'b2b').length;
+  const b2cCount = items.filter(t => t.bizDev === 'b2c').length;
+
+  // 篩選
+  let shown = withRange;
+  if (gf.biz === 'b2b') shown = shown.filter(x => x.t.bizDev === 'b2b');
+  if (gf.biz === 'b2c') shown = shown.filter(x => x.t.bizDev === 'b2c');
+  if (!gf.showDone)     shown = shown.filter(x => x.t.status !== 'done');
+
+  // 時間軸範圍：axisStart=最小 start；axisEnd=max(今天, 最大 end)+3 天緩衝
+  let axisStart, axisEnd;
+  if (shown.length){
+    axisStart = shown.reduce((a,x) => x.start < a ? x.start : a, shown[0].start);
+    const maxEnd = shown.reduce((a,x) => x.end > a ? x.end : a, shown[0].end);
+    axisEnd = maxEnd > todayStr ? maxEnd : todayStr;
+  } else { axisStart = todayStr; axisEnd = todayStr; }
+  axisEnd = addDays(axisEnd, 3);
+  const totalDays = diffDays(axisStart, axisEnd) + 1;
+  const gridW = totalDays * DAY_W;
+  const lastDay = addDays(axisStart, totalDays - 1);
+
+  // 逐日欄位
+  const days = [];
+  for (let i=0;i<totalDays;i++) days.push(addDays(axisStart, i));
+
+  // 月份合併表頭
+  const monthSpans = [];
+  days.forEach(ds => {
+    const ym = ds.slice(0,7);
+    const last = monthSpans[monthSpans.length-1];
+    if (last && last.ym === ym) last.n++; else monthSpans.push({ ym, n:1 });
+  });
+  const monthRow = monthSpans.map(ms =>
+    `<div style="display:inline-block;width:${ms.n*DAY_W}px;box-sizing:border-box;padding-left:4px;font-weight:700;color:var(--gray-500);border-left:1px solid var(--gray-200);">${ms.ym.replace('-','/')}</div>`
+  ).join('');
+
+  // 日數字表頭（周末紅底、今日標色）
+  const dayRow = days.map(ds => {
+    const dt = parseYmd(ds), wd = dt.getDay();
+    const cls = ['gantt-day'];
+    if (wd===0||wd===6) cls.push('weekend');
+    if (ds===todayStr)  cls.push('today');
+    return `<div class="${cls.join(' ')}">${dt.getDate()}</div>`;
+  }).join('');
+
+  // 軌道背景（周末整欄紅底 + 今日線，重複貼在每列以形成連續直帶）
+  const trackBg = days.map((ds,i) => {
+    const dt = parseYmd(ds), wd = dt.getDay();
+    const cls = ['gantt-col'];
+    if (wd===0||wd===6) cls.push('weekend');
+    if (ds===todayStr)  cls.push('today');
+    return `<div class="${cls.join(' ')}" style="left:${i*DAY_W}px;width:${DAY_W}px;"></div>`;
+  }).join('');
+
+  // 分組渲染
+  function groupHtml(biz, label){
+    const rows = shown.filter(x => x.t.bizDev === biz);
+    let body;
+    if (!rows.length){
+      body = `<div style="padding:14px;color:var(--gray-500);font-size:12px;">尚無任務，請到任務卡標記分類。</div>`;
+    } else {
+      body = rows.map(x => {
+        const t = x.t;
+        const left  = diffDays(axisStart, x.start) * DAY_W;
+        const width = (diffDays(x.start, x.end) + 1) * DAY_W;
+        const overdue = t.deadline && t.deadline < todayStr && t.status!=='done' && t.status!=='failed';
+        let barColor = biz==='b2b' ? 'var(--primary)' : 'var(--orange)';
+        if (t.status==='failed') barColor = 'var(--accent)';
+        const opacity = t.status==='done' ? .55 : 1;
+        const st = STATUS[t.status] || {};
+        const barLabel = escapeHtml(t.title || '(未命名)') + (t.status==='done' ? ' ✓' : '');
+        const deadlineTag = t.deadline ? `<span style="margin-left:auto;padding-left:8px;font-size:10px;opacity:.9;white-space:nowrap;">⏰${t.deadline.slice(5)}</span>` : '';
+        const overdueBar = overdue ? `<span style="position:absolute;right:0;top:0;bottom:0;width:4px;background:var(--accent);border-radius:0 6px 6px 0;"></span>` : '';
+        let midMark = '';
+        if (t.midCheck && t.midCheck>=axisStart && t.midCheck<=lastDay){
+          const mLeft = diffDays(axisStart, t.midCheck) * DAY_W + DAY_W/2 - 6;
+          midMark = `<div title="🔍 中段檢查 ${t.midCheck}" style="position:absolute;left:${mLeft}px;top:13px;width:12px;height:12px;background:var(--yellow);transform:rotate(45deg);border:1px solid var(--bg-card);z-index:3;"></div>`;
+        }
+        return `
+          <div class="gantt-row" data-gantt-task="${escapeHtml(t.id)}" title="${escapeHtml(t.title||'')}">
+            <div class="gantt-label-col" style="display:flex;align-items:center;gap:6px;padding:0 8px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${st.color||'var(--gray-400)'};flex:none;"></span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;">${escapeHtml(t.title||'(未命名)')}</span>
+              <span style="font-size:10px;color:var(--gray-500);flex:none;">${escapeHtml(t.assignee||'')}</span>
+            </div>
+            <div style="position:relative;width:${gridW}px;height:40px;flex:none;">
+              ${trackBg}${midMark}
+              <div class="gantt-bar" style="left:${left}px;width:${width}px;top:8px;background:${barColor};opacity:${opacity};">
+                <span style="overflow:hidden;text-overflow:ellipsis;">${barLabel}</span>${deadlineTag}${overdueBar}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+    return `<div class="gantt-group-head">${label} <span style="font-weight:400;color:var(--gray-500);font-size:11px;">${rows.length} 件</span></div>${body}`;
+  }
+
+  let groupsHtml = '';
+  if (gf.biz !== 'b2c') groupsHtml += groupHtml('b2b', '🤝 B2B 客戶開發');
+  if (gf.biz !== 'b2b') groupsHtml += groupHtml('b2c', '🛒 B2C 通路');
+
+  const fbtn = (val,txt) => `<button class="gantt-fbtn ${gf.biz===val?'active':''}" data-gbiz="${val}">${txt}</button>`;
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">📈 客戶開發甘特圖</h2>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ 🤝 B2B ${b2bCount} 件 ・ 🛒 B2C ${b2cCount} 件</p>
+      <div class="page-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        ${fbtn('all','全部')}${fbtn('b2b','只看 B2B')}${fbtn('b2c','只看 B2C')}
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-left:6px;">
+          <input type="checkbox" id="gantt-showdone" ${gf.showDone?'checked':''}> 顯示已完成
+        </label>
+      </div>
+    </div>
+    <div class="gantt-wrap" id="ganttWrap">
+      <div class="gantt-head">
+        <div style="display:flex;">
+          <div class="gantt-label-col" style="height:38px;"></div>
+          <div style="flex:none;">
+            <div style="display:flex;white-space:nowrap;height:18px;align-items:center;">${monthRow}</div>
+            <div style="display:flex;white-space:nowrap;height:20px;align-items:center;">${dayRow}</div>
+          </div>
+        </div>
+      </div>
+      ${items.length ? groupsHtml : '<div style="padding:24px;color:var(--gray-500);font-size:13px;text-align:center;">尚無任何客戶開發任務。請到任務卡，把任務標記為「🤝 B2B 客戶開發」或「🛒 B2C 通路」。</div>'}
+    </div>
+  `;
+
+  // 篩選互動
+  m.querySelectorAll('.gantt-fbtn').forEach(b => b.addEventListener('click', () => { gf.biz = b.dataset.gbiz; renderGantt(m); }));
+  const sd = m.querySelector('#gantt-showdone');
+  if (sd) sd.addEventListener('change', () => { gf.showDone = sd.checked; renderGantt(m); });
+
+  // 事件代理：點整列／bar → 開既有任務 Modal
+  const wrap = m.querySelector('#ganttWrap');
+  wrap.addEventListener('click', e => {
+    const row = e.target.closest('[data-gantt-task]');
+    if (row) openTaskModal(row.dataset.ganttTask);
+  });
+
+  // 初次定位捲軸到「今天」前 5 天
+  const todayIdx = diffDays(axisStart, todayStr);
+  if (todayIdx >= 0) requestAnimationFrame(() => { wrap.scrollLeft = Math.max(0, (todayIdx - 5) * DAY_W); });
+}
+
 function taskCard(t) {
   const today = new Date().toISOString().slice(0,10);
   const overdue = t.deadline && t.deadline < today && t.status !== 'done' && t.status !== 'failed';
@@ -1514,6 +1710,7 @@ function openTaskModal(id) {
     complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
     parentTaskId: '', isParent: false, projectKPI: '',
     taskType: 'normal', attachments: [], statusHistory: [],
+    bizDev: '',          // v2.5：客戶開發分類 '' | 'b2b' | 'b2c'
     collaborators: [],
     company: currentCompany,
     createdAt:'', notes:[]
@@ -1627,6 +1824,22 @@ function openTaskModal(id) {
           <div class="field-hint">機動任務在 ${ADHOC_SILENT_DAYS} 天無活動會自動發出警示，避免被遺忘</div>
         </div>
       ` : ''}
+
+      <!-- v2.5：客戶開發分類（選了才會進甘特圖；父/子/一般任務皆可標） -->
+      <div class="field">
+        <label class="field-label">客戶開發分類 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">（選了才會進甘特圖）</span></label>
+        <div style="display:flex;gap:8px;">
+          <label style="flex:1;cursor:pointer;border:1.5px solid ${(!data.bizDev)?'var(--primary)':'var(--gray-200)'};background:${(!data.bizDev)?'var(--primary-light)':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+            <input type="radio" name="f-bizDev" value="" ${(!data.bizDev)?'checked':''}> ⚪ 無
+          </label>
+          <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2b'?'#1F4E79':'var(--gray-200)'};background:${data.bizDev==='b2b'?'#D9E2F3':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+            <input type="radio" name="f-bizDev" value="b2b" ${data.bizDev==='b2b'?'checked':''}> 🤝 B2B 客戶開發
+          </label>
+          <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2c'?'#C65911':'var(--gray-200)'};background:${data.bizDev==='b2c'?'#FBE5D6':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+            <input type="radio" name="f-bizDev" value="b2c" ${data.bizDev==='b2c'?'checked':''}> 🛒 B2C 通路
+          </label>
+        </div>
+      </div>
 
       <!-- v2.2：舊「專案 KPI」獨立區塊已整合到上方「② 任務層級」radio 下 -->
 
@@ -1885,6 +2098,9 @@ async function saveTask(id) {
   // v1.6：任務類型 + 附檔
   const tt = document.querySelector('input[name="f-taskType"]:checked');
   if (tt) task.taskType = tt.value;
+  // v2.5：客戶開發分類
+  const bd = document.querySelector('input[name="f-bizDev"]:checked');
+  task.bizDev = bd ? bd.value : '';
   // v1.7：協作人員
   task.collaborators = Array.from(document.querySelectorAll('input[name="f-collaborator"]:checked')).map(c => c.value);
   // 父任務 / 子任務的 type 由後端自動推斷，前端無需強制
