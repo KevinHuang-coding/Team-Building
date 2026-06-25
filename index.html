@@ -470,6 +470,48 @@
   .gantt-fbtn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
   [data-theme="dark"] .gantt-day.weekend,[data-theme="dark"] .gantt-col.weekend{background:rgba(192,0,0,.18);}
   [data-theme="dark"] .gantt-label-col,[data-theme="dark"] .gantt-head{background:var(--bg-card);}
+
+  /* ===== v2.6：月/週/日目標（主公專屬） ===== */
+  .goal-period-card{background:var(--bg-card);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .goal-period-head{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--primary);margin-bottom:14px;}
+  .goal-period-head .pk{margin-left:8px;font-size:12px;font-weight:600;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:6px;}
+  .goal-co-block{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px dashed var(--gray-200);}
+  .goal-co-block:first-of-type{border-top:none;}
+  .goal-co-name{width:150px;flex:none;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:8px;}
+  .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  .goal-rows{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .goal-row{display:flex;align-items:center;gap:8px;}
+  .goal-done-dot{width:18px;height:18px;flex:none;border-radius:50%;border:2px solid var(--primary);background:transparent;cursor:pointer;transition:.15s;position:relative;padding:0;}
+  .goal-done-dot.done{background:var(--primary);}
+  .goal-done-dot.done::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;}
+  .goal-input{flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13.5px;font-family:inherit;background:var(--bg-card);color:var(--gray-800);}
+  .goal-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
+  .goal-row.done .goal-input{text-decoration:line-through;color:var(--gray-500);background:var(--gray-100);}
+  .goal-emp-select{flex:none;width:130px;padding:7px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--gray-50);color:var(--gray-700);}
+  .goal-emp-select:focus{outline:none;border-color:var(--primary);}
+  .goal-btn-add{width:26px;height:26px;flex:none;border:none;border-radius:7px;background:var(--primary);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .goal-btn-add:hover{background:var(--primary-dark);}
+  .goal-btn-del{width:26px;height:26px;flex:none;border:1px solid var(--gray-200);border-radius:7px;background:var(--bg-card);color:var(--gray-400);font-size:15px;cursor:pointer;}
+  .goal-btn-del:hover{color:var(--accent);border-color:var(--accent);}
+  .goal-btn-link{flex:none;border:1px solid var(--primary);border-radius:7px;background:var(--primary-light);color:var(--primary);font-size:12px;font-weight:700;padding:5px 9px;cursor:pointer;white-space:nowrap;}
+  .goal-btn-link:hover{background:var(--primary);color:#fff;}
+  .goal-btn-link.linked{background:#dcfce7;border-color:#16a34a;color:#15803d;}
+  .goal-legend{font-size:12px;color:var(--gray-500);margin-top:6px;display:flex;gap:16px;flex-wrap:wrap;}
+  .goal-legend b{color:var(--gray-700);}
+  /* 連動掛任務卡 Modal 候選列 */
+  .goal-cand{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:9px;margin-bottom:8px;}
+  .goal-cand.suggest{border-color:var(--primary);background:var(--primary-light);}
+  .goal-cand .ttl{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--gray-800);}
+  .goal-cand .meta{font-size:11.5px;color:var(--gray-500);font-weight:500;}
+  /* dark mode 對比補強（坑 2.1p：別讓淺色 hardcode 在深色穿幫） */
+  [data-theme="dark"] .goal-period-card{background:var(--bg-card);}
+  [data-theme="dark"] .goal-input{background:var(--gray-100);color:#F1F5F9;}
+  [data-theme="dark"] .goal-row.done .goal-input{background:var(--gray-100);color:var(--gray-500);}
+  [data-theme="dark"] .goal-emp-select{background:var(--gray-100);color:#F1F5F9;}
+  [data-theme="dark"] .goal-btn-del{background:var(--bg-card);}
+  [data-theme="dark"] .goal-btn-link.linked{background:#14532d;border-color:#16a34a;color:#bbf7d0;}
+  [data-theme="dark"] .goal-cand{background:var(--bg-card);}
+  [data-theme="dark"] .goal-cand .ttl{color:#F1F5F9;}
 </style>
 </head>
 <body>
@@ -1035,6 +1077,7 @@ function renderSideNav() {
   if (STATE.me.isLord || STATE.me.role === 'admin') {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
   }
+  if (STATE.me.isLord) items.push({ key:'goals', icon:'📌', label:'月/週/日目標' });   // v2.6：主公專屬
   if (STATE.me.isLord) items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表' });
   if (STATE.me.isLord) items.push({ key:'scoreboard', icon:'🏆', label:'下屬積分表' });
   items.push({ key:'profile', icon:'👤', label:'我的設定' });
@@ -1061,6 +1104,7 @@ function go(page) {
     report: renderReport,
     pdca:   renderPdca,
     gantt:  renderGantt,
+    goals:  renderGoals,
     people: renderPeople,
     ogsm:   renderOgsm,
     scoreboard: renderScoreboard,
@@ -1694,6 +1738,273 @@ function computeSuggestedBonus(t) {
     return { points, reason: '🐢 延誤完成 ' + days + ' 天 (' + points + ')' };
   }
   return null;
+}
+
+//=========================================================================
+// v2.6：月/週/日目標（主公專屬・跨三公司一頁總覽）
+//=========================================================================
+const GOAL_COMPANIES = ['npw', 'mw', 'fb'];   // 依主公原圖：南坡萬 → 滿屋 → Feeling Bar
+const GOAL_CO_COLOR  = { npw:'#1E5A8E', mw:'#7c3aed', fb:'#0891b2' };
+
+// 週期 key：全程走 localDay / currentWeekId（沿用週報演算法），禁用 toISOString（坑 1/坑 9）
+function goalKeys() {
+  const dayKey = localDay(new Date());            // 2026-06-25
+  return { month: dayKey.slice(0, 7), week: currentWeekId(), day: dayKey };
+}
+// 以 UTC 構建純日期物件做整數日期運算，避開時區位移（僅供顯示用標籤）
+function _goalDateUTC(ymd) {
+  const p = String(ymd).split('-');
+  return new Date(Date.UTC(+p[0], (+p[1]) - 1, +p[2]));
+}
+function weekRangeLabel(dayKey) {
+  const d = _goalDateUTC(dayKey);
+  const dow = d.getUTCDay() || 7;                  // 週一=1 … 週日=7
+  const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - (dow - 1));
+  const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
+  const md = x => (x.getUTCMonth() + 1) + '/' + x.getUTCDate();
+  return md(mon) + ' – ' + md(sun);
+}
+function weekdayTW(dayKey) {
+  return ['日', '一', '二', '三', '四', '五', '六'][_goalDateUTC(dayKey).getUTCDay()];
+}
+function _gTrunc(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function goalsForBucket(company, period, periodKey) {
+  return (STATE.goals || [])
+    .filter(g => g.company === company && g.period === period && String(g.periodKey) === String(periodKey))
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+}
+function findTaskById(company, id) {
+  return ((STATE.tasks && STATE.tasks[company]) || []).find(t => t.id === id) || null;
+}
+// 負責員工下拉名單來自 lord 的 STATE.accounts（getInitData 已給、密碼已 strip）—零後端改動
+function staffOptions(companyKey, selected) {
+  const list = (STATE.accounts && STATE.accounts[companyKey]) || [];
+  const names = list.map(u => u.username);
+  return '<option value="">— 負責員工 —</option>' +
+    names.map(n => `<option value="${escapeHtml(n)}" ${n === selected ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+}
+
+function renderGoals(m) {
+  if (!STATE.me.isLord) {
+    m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>月/週/日目標為 Kevin執行長 專屬</div>`;
+    return;
+  }
+  const k = goalKeys();
+  const periods = [
+    { p:'month', icon:'📅', label:'月目標',   pkLabel:k.month },
+    { p:'week',  icon:'🗓️', label:'週目標',   pkLabel:k.week + '（' + weekRangeLabel(k.day) + '）' },
+    { p:'day',   icon:'☀️', label:'每日目標', pkLabel:k.day.slice(5).replace('-', '/') + '（' + weekdayTW(k.day) + '）' },
+  ];
+  const pkByPeriod = { month:k.month, week:k.week, day:k.day };
+  m.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h2 class="page-title">📌 月/週/日目標</h2>
+        <p class="page-sub">Kevin執行長 專屬 ・ 跨三公司一頁總覽 ・ ${k.month} ・ ${k.week}</p>
+      </div>
+      <button class="btn btn-primary" onclick="saveGoals()">💾 儲存目標</button>
+    </div>
+    ${periods.map(pr => `
+      <div class="goal-period-card">
+        <div class="goal-period-head">${pr.icon} ${pr.label} <span class="pk">${escapeHtml(pr.pkLabel)}</span></div>
+        ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, pr.p, pkByPeriod[pr.p])).join('')}
+      </div>`).join('')}
+    <div class="goal-legend">
+      <span><b>○</b> 未完成</span>
+      <span><b style="color:var(--primary)">●✓</b> 已完成</span>
+      <span><b style="color:var(--primary)">＋</b> 新增 ・ <b>−</b> 刪除</span>
+      <span><b>每日目標</b> 可指派負責員工 + <b style="color:var(--primary)">🔗 掛任務卡</b></span>
+    </div>`;
+}
+
+function goalCompanyBlock(company, period, periodKey) {
+  const rows = goalsForBucket(company, period, periodKey);
+  const list = rows.length ? rows : [{ content:'', done:'', assignee:'', linkedTaskId:'' }];
+  const color = GOAL_CO_COLOR[company] || 'var(--primary)';
+  return `
+    <div class="goal-co-block" data-company="${company}" data-period="${period}" data-periodkey="${escapeHtml(periodKey)}">
+      <div class="goal-co-name"><span class="co-dot" style="background:${color}"></span>${escapeHtml(COMPANY_LABEL[company] || company)}</div>
+      <div class="goal-rows">${list.map(g => goalRowHtml(company, period, g)).join('')}</div>
+    </div>`;
+}
+
+function goalRowHtml(company, period, g) {
+  const done = String(g.done) === '1' || g.done === true;
+  const linked = g.linkedTaskId ? findTaskById(company, g.linkedTaskId) : null;
+  let dayExtra = '';
+  if (period === 'day') {
+    dayExtra = `
+      <select class="goal-emp-select" data-k="assignee">${staffOptions(company, g.assignee || '')}</select>
+      <button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)">${linked ? '🔗 已掛：' + escapeHtml(_gTrunc(linked.title, 8)) : '🔗 掛任務卡'}</button>`;
+  }
+  return `
+    <div class="goal-row ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
+      <button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>
+      <input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…">${dayExtra}
+      <button type="button" class="goal-btn-add" title="在下方新增一列" onclick="addGoalRow(this)">＋</button>
+      <button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>
+    </div>`;
+}
+
+function toggleGoalDone(btn) {
+  btn.classList.toggle('done');
+  btn.closest('.goal-row').classList.toggle('done');
+}
+function addGoalRow(btn) {
+  const row = btn.closest('.goal-row');
+  const block = btn.closest('.goal-co-block');
+  const tmp = document.createElement('div');
+  tmp.innerHTML = goalRowHtml(block.dataset.company, block.dataset.period, { content:'', done:'', assignee:'', linkedTaskId:'' });
+  const fresh = tmp.querySelector('.goal-row');
+  row.parentElement.insertBefore(fresh, row.nextSibling);
+}
+function delGoalRow(btn) {
+  const row = btn.closest('.goal-row');
+  const rows = row.parentElement;
+  if (rows.children.length > 1) { row.remove(); return; }
+  // 至少保留 1 列：清空而非刪除
+  row.querySelector('[data-k="content"]').value = '';
+  row.dataset.linked = '';
+  row.classList.remove('done');
+  const dot = row.querySelector('.goal-done-dot'); if (dot) dot.classList.remove('done');
+  const lk = row.querySelector('[data-k="link"]'); if (lk) { lk.classList.remove('linked'); lk.textContent = '🔗 掛任務卡'; }
+}
+
+// 蒐集畫面上 9 個 bucket（3 公司 × 3 週期）非空列 → saveGoals（整桶取代）
+async function saveGoals() {
+  const k = goalKeys();
+  const pkByPeriod = { month:k.month, week:k.week, day:k.day };
+  const buckets = [];
+  document.querySelectorAll('.goal-co-block').forEach(block => {
+    const company = block.dataset.company;
+    const period = block.dataset.period;
+    const items = [];
+    block.querySelectorAll('.goal-row').forEach((row, i) => {
+      const content = (row.querySelector('[data-k="content"]') || {}).value || '';
+      if (!content.trim()) return;
+      items.push({
+        content: content.trim(),
+        done: row.classList.contains('done'),
+        assignee: period === 'day' ? ((row.querySelector('[data-k="assignee"]') || {}).value || '') : '',
+        sortOrder: i,
+        linkedTaskId: row.dataset.linked || '',
+      });
+    });
+    buckets.push({ company, period, periodKey: pkByPeriod[period], items });
+  });
+  try {
+    await api('saveGoals', { buckets });
+    STATE = await api('getInitData'); cacheState();
+    showToast('目標已儲存', 'success');
+    go('goals');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ── 每日目標「連動掛任務卡」半自動（⭐ 建議 → 子任務 / ⚡ 機動卡，零新增端點） ──
+let _linkCtx = null;   // { row, company, content, emp }
+const _GOAL_STATUS_ZH = { plan:'📋 規劃', do:'🏃 執行', check:'🔍 檢查', done:'✅ 完成', hold:'⏸ 暫停', failed:'❌ 失敗' };
+const _GOAL_TYPE_ZH   = { normal:'一般', adhoc:'⚡ 機動', project:'📦 專案', subtask:'↳ 子任務' };
+
+// 中文 bigram（連續兩字）相似度：命中數為分數（輕量、前端）
+function bigrams(s) {
+  s = String(s || '').replace(/\s+/g, '');
+  const set = new Set();
+  for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2));
+  return set;
+}
+function bigramScore(goalSet, text) {
+  if (!goalSet.size) return 0;
+  const t = String(text || '').replace(/\s+/g, '');
+  let hit = 0;
+  goalSet.forEach(bg => { if (t.indexOf(bg) >= 0) hit++; });
+  return hit;
+}
+
+function openLinkModal(btn) {
+  const row = btn.closest('.goal-row');
+  const block = btn.closest('.goal-co-block');
+  const company = block.dataset.company;
+  const content = ((row.querySelector('[data-k="content"]') || {}).value || '').trim();
+  const emp = (row.querySelector('[data-k="assignee"]') || {}).value || '';
+  if (!content || !emp) { showToast('請先填目標內容並選定負責員工', 'warn'); return; }
+  _linkCtx = { row, company, content, emp };
+  const existingLinked = row.dataset.linked || '';
+
+  // 候選＝該員工在該公司「進行中、非子任務」的卡（排除已是子任務的卡，避免子任務再掛子任務）
+  const cands = ((STATE.tasks && STATE.tasks[company]) || []).filter(t =>
+    t.assignee === emp && t.status !== 'done' && t.status !== 'failed' && !t.parentTaskId);
+  const goalBg = bigrams(content);
+  const scored = cands
+    .map(t => ({ t, score: bigramScore(goalBg, (t.title || '') + ' ' + (t.why || '') + ' ' + (t.doneLook || '')) }))
+    .sort((a, b) => b.score - a.score);
+  const bestId = (scored.length && scored[0].score > 0) ? scored[0].t.id : '';
+
+  const candHtml = scored.length ? scored.map(({ t, score }) => `
+    <div class="goal-cand ${t.id === bestId ? 'suggest' : ''}">
+      <div class="ttl">${t.id === bestId ? '⭐ 建議　' : ''}${escapeHtml(t.title)}
+        <div class="meta">${_GOAL_STATUS_ZH[t.status] || escapeHtml(t.status || '')} ・ ${_GOAL_TYPE_ZH[t.taskType] || escapeHtml(t.taskType || '')}${score > 0 ? ' ・ 相似度 ' + score : ''}</div>
+      </div>
+      <button class="btn btn-ghost" onclick="linkAsSubtask('${escapeHtml(t.id)}')">掛成子任務</button>
+    </div>`).join('')
+    : `<p class="page-sub">「${escapeHtml(emp)}」目前沒有進行中的任務卡，可直接新建機動卡。</p>`;
+
+  showModal({
+    title: '🔗 連動掛任務卡',
+    body: `
+      <p class="page-sub" style="margin-bottom:12px;">目標：<b>${escapeHtml(content)}</b> ・ 負責：<b>${escapeHtml(emp)}</b>（${escapeHtml(COMPANY_LABEL[company] || company)}）</p>
+      ${existingLinked ? `<div style="background:#fffbe6;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12.5px;color:#92600a;margin-bottom:12px;">此目標已掛過任務卡，再選一張會建立新卡（舊卡不會自動刪除，如需移除請到看板手動處理）。</div>` : ''}
+      <div>${candHtml}</div>`,
+    foot: `
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="linkAsAdhoc()">⚡ 都不相關 → 新建機動卡</button>`,
+  });
+}
+
+// 比照 openTaskModal 的預設 data 物件（避免缺欄位）；勿手動塞 id/createdAt（後端產生）
+function makeBlankTask(company) {
+  const me = STATE.me;
+  return {
+    id:'', title:'', why:'', doneLook:'', redLines:'',
+    deadline:'', midCheck:'',
+    assignee:'', creator: me.username,
+    priority:'med', authLevel:'L2', status:'plan',
+    complexity:0, techDifficulty:0, bonusPoints:0, bonusReason:'',
+    parentTaskId:'', isParent:false, projectKPI:'',
+    taskType:'normal', attachments:[], statusHistory:[],
+    bizDev:'', collaborators:[],
+    company: company,
+    createdAt:'', notes:[],
+  };
+}
+async function linkAsAdhoc() {
+  if (!_linkCtx) return;
+  const { company, content, emp } = _linkCtx;
+  const task = makeBlankTask(company);
+  task.title = content; task.assignee = emp; task.taskType = 'adhoc';
+  task.status = 'plan'; task.creator = STATE.me.username;
+  await _doLinkSave(task, '機動卡 ⚡');
+}
+async function linkAsSubtask(parentId) {
+  if (!_linkCtx) return;
+  const { company, content, emp } = _linkCtx;
+  const task = makeBlankTask(company);
+  task.title = content; task.assignee = emp; task.parentTaskId = parentId;  // 後端自動推 taskType='subtask'
+  task.status = 'plan'; task.creator = STATE.me.username;
+  await _doLinkSave(task, '子任務');
+}
+async function _doLinkSave(task, kindLabel) {
+  try {
+    const res = await api('saveTask', { task });   // 回傳 { task }
+    const newTask = res.task;
+    if (!STATE.tasks[task.company]) STATE.tasks[task.company] = [];
+    STATE.tasks[task.company].push(newTask);
+    // 把該 goal 列的 linkedTaskId 設為新卡 id
+    if (_linkCtx && _linkCtx.row) _linkCtx.row.dataset.linked = newTask.id;
+    closeModal();
+    showToast('已掛上『' + kindLabel + '』：' + _gTrunc(task.title, 12), 'success');
+    await saveGoals();   // 持久化 goals（含 linkedTaskId）並重抓 STATE 重渲染
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 function openTaskModal(id) {
