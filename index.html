@@ -477,7 +477,8 @@
   .goal-period-head .pk{margin-left:8px;font-size:12px;font-weight:600;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:6px;}
   .goal-co-block{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px dashed var(--gray-200);}
   .goal-co-block:first-of-type{border-top:none;}
-  .goal-co-name{width:150px;flex:none;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:8px;}
+  .goal-co-name{width:170px;flex:none;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:6px;}
+  .goal-add-co{margin-left:auto;}
   .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
   .goal-rows{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
   .goal-row{display:flex;align-items:center;gap:8px;}
@@ -514,7 +515,7 @@
   .goal-day-col-head{font-size:13px;font-weight:700;color:var(--primary);padding:2px 2px 8px;border-bottom:1px dashed var(--gray-200);margin-bottom:8px;}
   .goal-day-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;border-top:1px dashed var(--gray-200);padding:8px 0;}
   .goal-day-col .goal-co-block:first-of-type{border-top:none;}
-  .goal-day-col .goal-co-name{width:auto;padding-top:0;font-size:13px;}
+  .goal-day-col .goal-co-name{width:100%;padding-top:0;font-size:13px;}
   .goal-day-col .goal-rows{width:100%;}
   .goal-day-col .goal-row{flex-wrap:wrap;}
   .goal-day-col .goal-input{flex:1 1 120px;min-width:90px;}
@@ -1091,16 +1092,17 @@ async function onCompanySwitchChange(e) {
   }
 }
 function renderSideNav() {
-  const items = [
+  const items = [];
+  if (STATE.me.isLord) items.push({ key:'goals', icon:'📌', label:'月/週/日目標' });   // v2.9：主公最常用→置頂
+  items.push(
     { key:'kanban', icon:'📋', label:'任務看板' },
     { key:'report', icon:'📝', label:'週報 / 一對一' },
     { key:'pdca',   icon:'📊', label:'PDCA 儀表' },
     { key:'gantt',  icon:'📈', label:'客戶開發甘特圖' },   // v2.5：全員可見
-  ];
+  );
   if (STATE.me.isLord || STATE.me.role === 'admin') {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
   }
-  if (STATE.me.isLord) items.push({ key:'goals', icon:'📌', label:'月/週/日目標' });   // v2.6：主公專屬
   if (STATE.me.isLord) items.push({ key:'ogsm', icon:'🎯', label:'OGSM 戰略表' });
   if (STATE.me.isLord) items.push({ key:'scoreboard', icon:'🏆', label:'下屬積分表' });
   items.push({ key:'profile', icon:'👤', label:'我的設定' });
@@ -1768,7 +1770,7 @@ function computeSuggestedBonus(t) {
 //=========================================================================
 const GOAL_COMPANIES = ['npw', 'mw', 'fb'];   // 依主公原圖：南坡萬 → 滿屋 → Feeling Bar
 const GOAL_CO_COLOR  = { npw:'#1E5A8E', mw:'#7c3aed', fb:'#0891b2' };
-const GOAL_PERIODS   = ['month', 'week', 'day'];
+const GOAL_PERIODS   = ['day', 'week', 'month'];   // v2.9：日最常用→置頂，日→週→月
 const GOAL_PERIOD_META = { month:{icon:'📅',label:'月目標'}, week:{icon:'🗓️',label:'週目標'}, day:{icon:'☀️',label:'每日目標'} };
 // v2.8：三層各自獨立挑日期（''＝當期）；dirty 也分三層，切換某層只重渲染該層、不動其他層的編輯
 const _goalSel   = { month:'', week:'', day:'' };
@@ -1950,7 +1952,7 @@ function goalCompanyBlock(company, period, periodKey) {
   const color = GOAL_CO_COLOR[company] || 'var(--primary)';
   return `
     <div class="goal-co-block" data-company="${company}" data-period="${period}" data-periodkey="${escapeHtml(periodKey)}">
-      <div class="goal-co-name"><span class="co-dot" style="background:${color}"></span>${escapeHtml(COMPANY_LABEL[company] || company)}</div>
+      <div class="goal-co-name"><span class="co-dot" style="background:${color}"></span>${escapeHtml(COMPANY_LABEL[company] || company)}<button type="button" class="goal-btn-add goal-add-co" title="新增一列目標" onclick="addGoalRowToBlock(this)">＋</button></div>
       <div class="goal-rows">${list.map(g => goalRowHtml(company, period, g)).join('')}</div>
     </div>`;
 }
@@ -1968,7 +1970,6 @@ function goalRowHtml(company, period, g) {
     <div class="goal-row ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
       <button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>
       <input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)">${dayExtra}
-      <button type="button" class="goal-btn-add" title="在下方新增一列" onclick="addGoalRow(this)">＋</button>
       <button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>
     </div>`;
 }
@@ -1978,13 +1979,13 @@ function toggleGoalDone(btn) {
   btn.closest('.goal-row').classList.toggle('done');
   markGoalsDirty(btn);
 }
-function addGoalRow(btn) {
-  const row = btn.closest('.goal-row');
+// v2.9：每間公司一顆「＋」（在公司名旁），按下在該公司目標列末尾新增一列
+function addGoalRowToBlock(btn) {
   const block = btn.closest('.goal-co-block');
+  const rows = block.querySelector('.goal-rows');
   const tmp = document.createElement('div');
   tmp.innerHTML = goalRowHtml(block.dataset.company, block.dataset.period, { content:'', done:'', assignee:'', linkedTaskId:'' });
-  const fresh = tmp.querySelector('.goal-row');
-  row.parentElement.insertBefore(fresh, row.nextSibling);
+  rows.appendChild(tmp.querySelector('.goal-row'));
   markGoalsDirty(btn);
 }
 function delGoalRow(btn) {
