@@ -498,12 +498,16 @@
   .goal-btn-link.linked{background:#dcfce7;border-color:#16a34a;color:#15803d;}
   .goal-legend{font-size:12px;color:var(--gray-500);margin-top:6px;display:flex;gap:16px;flex-wrap:wrap;}
   .goal-legend b{color:var(--gray-700);}
-  .goal-datebar{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--gray-200);border-radius:8px;background:var(--bg-card);font-size:13px;color:var(--gray-700);}
+  .goal-card-picker{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:8px;background:var(--gray-50);}
   .goal-date-input{border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--gray-800);cursor:pointer;}
   .goal-date-input:focus{outline:none;}
-  [data-theme="dark"] .goal-datebar{background:var(--gray-100);border-color:var(--gray-200);color:#F1F5F9;}
+  .goal-mini-today{border:1px solid var(--gray-200);background:var(--bg-card);color:var(--gray-600);font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;cursor:pointer;}
+  .goal-mini-today:hover:not(:disabled){border-color:var(--primary);color:var(--primary);}
+  .goal-mini-today:disabled{opacity:.45;cursor:default;}
+  [data-theme="dark"] .goal-card-picker{background:var(--gray-100);border-color:var(--gray-200);}
   [data-theme="dark"] .goal-date-input{color:#F1F5F9;}
   [data-theme="dark"] .goal-date-input::-webkit-calendar-picker-indicator{filter:invert(1);}
+  [data-theme="dark"] .goal-mini-today{background:var(--bg-card);color:var(--gray-500);}
   /* 連動掛任務卡 Modal 候選列 */
   .goal-cand{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:9px;margin-bottom:8px;}
   .goal-cand.suggest{border-color:var(--primary);background:var(--primary-light);}
@@ -1751,38 +1755,56 @@ function computeSuggestedBonus(t) {
 //=========================================================================
 const GOAL_COMPANIES = ['npw', 'mw', 'fb'];   // 依主公原圖：南坡萬 → 滿屋 → Feeling Bar
 const GOAL_CO_COLOR  = { npw:'#1E5A8E', mw:'#7c3aed', fb:'#0891b2' };
-let _goalViewDate = '';    // v2.7：日曆選的檢視日期 YYYY-MM-DD（''＝今天）
-let _goalsDirty   = false; // v2.7：頁面有未儲存編輯（切換日期前提醒）
+const GOAL_PERIODS   = ['month', 'week', 'day'];
+const GOAL_PERIOD_META = { month:{icon:'📅',label:'月目標'}, week:{icon:'🗓️',label:'週目標'}, day:{icon:'☀️',label:'每日目標'} };
+// v2.8：三層各自獨立挑日期（''＝當期）；dirty 也分三層，切換某層只重渲染該層、不動其他層的編輯
+const _goalSel   = { month:'', week:'', day:'' };
+const _goalDirty = { month:false, week:false, day:false };
 
-// 供 currentWeekId 用的本地 Date：選定日→該日本地午夜；未選→今天
-function goalBaseDate() {
-  if (_goalViewDate) {
-    const p = _goalViewDate.split('-');
-    return new Date(+p[0], (+p[1]) - 1, +p[2]);
-  }
-  return new Date();
+// 各週期當前/選定的 periodKey（native input 值格式即 periodKey：month=2026-06、week=2026-W25、day=2026-06-25）
+function periodKeyOf(period) {
+  const today = localDay(new Date());
+  if (period === 'month') return _goalSel.month || today.slice(0, 7);
+  if (period === 'week')  return _goalSel.week  || currentWeekId(new Date());
+  return _goalSel.day || today;
 }
-// 週期 key：全程走 localDay / currentWeekId（沿用週報演算法），禁用 toISOString（坑 1/坑 9）
+function isPeriodCurrent(period) {
+  const sel = _goalSel[period];
+  if (!sel) return true;
+  const today = localDay(new Date());
+  if (period === 'month') return sel === today.slice(0, 7);
+  if (period === 'week')  return sel === currentWeekId(new Date());
+  return sel === today;
+}
+// 相容保留：三鍵一次取（saveGoals 仍會以各 block 自帶的 data-periodkey 為準）
 function goalKeys() {
-  const d = goalBaseDate();
-  const dayKey = _goalViewDate || localDay(d);    // 選定日用字串本身；今天用 localDay → 2026-06-25
-  return { month: dayKey.slice(0, 7), week: currentWeekId(d), day: dayKey };
+  return { month: periodKeyOf('month'), week: periodKeyOf('week'), day: periodKeyOf('day') };
 }
 // 以 UTC 構建純日期物件做整數日期運算，避開時區位移（僅供顯示用標籤）
 function _goalDateUTC(ymd) {
   const p = String(ymd).split('-');
   return new Date(Date.UTC(+p[0], (+p[1]) - 1, +p[2]));
 }
-function weekRangeLabel(dayKey) {
-  const d = _goalDateUTC(dayKey);
-  const dow = d.getUTCDay() || 7;                  // 週一=1 … 週日=7
-  const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - (dow - 1));
+function weekdayTW(dayKey) {
+  return ['日', '一', '二', '三', '四', '五', '六'][_goalDateUTC(dayKey).getUTCDay()];
+}
+// 從 ISO 週鍵（2026-W25）算該週週一的 UTC 日期（標準 ISO：含 1/4 的那週為第 1 週）
+function isoWeekMonday(weekKey) {
+  const m = String(weekKey).match(/(\d{4})-W(\d{2})/);
+  if (!m) return null;
+  const year = +m[1], week = +m[2];
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Dow = jan4.getUTCDay() || 7;
+  const w1mon = new Date(jan4); w1mon.setUTCDate(jan4.getUTCDate() - (jan4Dow - 1));
+  const mon = new Date(w1mon); mon.setUTCDate(w1mon.getUTCDate() + (week - 1) * 7);
+  return mon;
+}
+function weekRangeLabelFromKey(weekKey) {
+  const mon = isoWeekMonday(weekKey);
+  if (!mon) return '';
   const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
   const md = x => (x.getUTCMonth() + 1) + '/' + x.getUTCDate();
   return md(mon) + ' – ' + md(sun);
-}
-function weekdayTW(dayKey) {
-  return ['日', '一', '二', '三', '四', '五', '六'][_goalDateUTC(dayKey).getUTCDay()];
 }
 function _gTrunc(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; }
 
@@ -1807,56 +1829,75 @@ function renderGoals(m) {
     m.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div>月/週/日目標為 Kevin執行長 專屬</div>`;
     return;
   }
-  const k = goalKeys();
-  const periods = [
-    { p:'month', icon:'📅', label:'月目標',   pkLabel:k.month },
-    { p:'week',  icon:'🗓️', label:'週目標',   pkLabel:k.week + '（' + weekRangeLabel(k.day) + '）' },
-    { p:'day',   icon:'☀️', label:'每日目標', pkLabel:k.day.slice(5).replace('-', '/') + '（' + weekdayTW(k.day) + '）' },
-  ];
-  const pkByPeriod = { month:k.month, week:k.week, day:k.day };
-  const isToday = !_goalViewDate || _goalViewDate === localDay(new Date());
   m.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
       <div>
         <h2 class="page-title">📌 月/週/日目標</h2>
-        <p class="page-sub">Kevin執行長 專屬 ・ 跨三公司一頁總覽 ・ ${k.month} ・ ${k.week}</p>
+        <p class="page-sub">Kevin執行長 專屬 ・ 跨三公司一頁總覽 ・ 月/週/日可各自挑日期、各自獨立顯示</p>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <label class="goal-datebar" title="挑選檢視日期（決定月/週/日）">📅
-          <input type="date" id="goalDate" class="goal-date-input" value="${k.day}" onchange="onGoalDateChange(this.value)">
-        </label>
-        <button class="btn btn-ghost" onclick="goGoalsToday()" ${isToday ? 'disabled' : ''}>回今天</button>
-        <button class="btn btn-primary" onclick="saveGoals()">💾 儲存目標</button>
-      </div>
+      <button class="btn btn-primary" onclick="saveGoals()">💾 儲存目標</button>
     </div>
-    ${periods.map(pr => `
-      <div class="goal-period-card">
-        <div class="goal-period-head">${pr.icon} ${pr.label} <span class="pk">${escapeHtml(pr.pkLabel)}</span></div>
-        ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, pr.p, pkByPeriod[pr.p])).join('')}
-      </div>`).join('')}
+    ${GOAL_PERIODS.map(p => `<div class="goal-period-card" id="goal-card-${p}"></div>`).join('')}
     <div class="goal-legend">
       <span><b>○</b> 未完成</span>
       <span><b style="color:var(--primary)">●✓</b> 已完成</span>
       <span><b style="color:var(--primary)">＋</b> 新增 ・ <b>−</b> 刪除</span>
       <span><b>每日目標</b> 可指派負責員工 + <b style="color:var(--primary)">🔗 掛任務卡</b></span>
     </div>`;
-  _goalsDirty = false;   // 剛渲染＝乾淨狀態
+  GOAL_PERIODS.forEach(renderPeriodCard);
 }
 
-function markGoalsDirty() { _goalsDirty = true; }
-function _confirmLeaveGoals() {
-  return !_goalsDirty || confirm('有未儲存的目標編輯，切換日期會丟失，確定離開？');
+// native picker 值格式即 periodKey：month→type=month、week→type=week、day→type=date
+function periodPickerHtml(period, key) {
+  const t = period === 'month' ? 'month' : period === 'week' ? 'week' : 'date';
+  return `<input type="${t}" class="goal-date-input" value="${escapeHtml(key)}" onchange="onGoalPeriodChange('${period}', this.value)">`;
 }
-function onGoalDateChange(v) {
-  if (!v) { document.getElementById('goalDate').value = goalKeys().day; return; }
-  if (!_confirmLeaveGoals()) { document.getElementById('goalDate').value = goalKeys().day; return; }
-  _goalViewDate = v;
-  go('goals');
+function periodPkLabel(period, key) {
+  if (period === 'month') return key;
+  if (period === 'week')  return key + '（' + weekRangeLabelFromKey(key) + '）';
+  return key.slice(5).replace('-', '/') + '（' + weekdayTW(key) + '）';
 }
-function goGoalsToday() {
-  if (!_confirmLeaveGoals()) return;
-  _goalViewDate = '';
-  go('goals');
+// 只重渲染單一週期卡（不動其他兩層）
+function renderPeriodCard(period) {
+  const el = document.getElementById('goal-card-' + period);
+  if (!el) return;
+  const key = periodKeyOf(period);
+  const meta = GOAL_PERIOD_META[period];
+  const cur = isPeriodCurrent(period);
+  el.innerHTML = `
+    <div class="goal-period-head">
+      ${meta.icon} ${meta.label} <span class="pk">${escapeHtml(periodPkLabel(period, key))}</span>
+      <span class="goal-card-picker">
+        ${periodPickerHtml(period, key)}
+        <button type="button" class="goal-mini-today" onclick="onGoalPeriodToday('${period}')" ${cur ? 'disabled' : ''}>本${period === 'month' ? '月' : period === 'week' ? '週' : '日'}</button>
+      </span>
+    </div>
+    ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, period, key)).join('')}`;
+  _goalDirty[period] = false;   // 該層剛渲染＝乾淨
+}
+
+// dirty 標記：傳入元素 → 推回所屬週期；或直接傳 period 字串
+function markGoalsDirty(elOrPeriod) {
+  let period = elOrPeriod;
+  if (elOrPeriod && elOrPeriod.closest) {
+    const b = elOrPeriod.closest('.goal-co-block');
+    period = b ? b.dataset.period : null;
+  }
+  if (period && _goalDirty.hasOwnProperty(period)) _goalDirty[period] = true;
+}
+function _confirmLeavePeriod(period) {
+  return !_goalDirty[period] || confirm('此區塊有未儲存的編輯，切換日期會丟失，確定？');
+}
+function onGoalPeriodChange(period, v) {
+  if (!v) { renderPeriodCard(period); return; }          // 清空 → 還原
+  if (!_confirmLeavePeriod(period)) { renderPeriodCard(period); return; }
+  _goalSel[period] = v;
+  renderPeriodCard(period);                              // 只重畫這一層
+}
+function onGoalPeriodToday(period) {
+  if (!_confirmLeavePeriod(period)) return;
+  _goalSel[period] = '';
+  renderPeriodCard(period);
 }
 
 function goalCompanyBlock(company, period, periodKey) {
@@ -1876,13 +1917,13 @@ function goalRowHtml(company, period, g) {
   let dayExtra = '';
   if (period === 'day') {
     dayExtra = `
-      <select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty()">${staffOptions(company, g.assignee || '')}</select>
+      <select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this)">${staffOptions(company, g.assignee || '')}</select>
       <button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)">${linked ? '🔗 已掛：' + escapeHtml(_gTrunc(linked.title, 8)) : '🔗 掛任務卡'}</button>`;
   }
   return `
     <div class="goal-row ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
       <button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>
-      <input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty()">${dayExtra}
+      <input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)">${dayExtra}
       <button type="button" class="goal-btn-add" title="在下方新增一列" onclick="addGoalRow(this)">＋</button>
       <button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>
     </div>`;
@@ -1891,7 +1932,7 @@ function goalRowHtml(company, period, g) {
 function toggleGoalDone(btn) {
   btn.classList.toggle('done');
   btn.closest('.goal-row').classList.toggle('done');
-  markGoalsDirty();
+  markGoalsDirty(btn);
 }
 function addGoalRow(btn) {
   const row = btn.closest('.goal-row');
@@ -1900,12 +1941,12 @@ function addGoalRow(btn) {
   tmp.innerHTML = goalRowHtml(block.dataset.company, block.dataset.period, { content:'', done:'', assignee:'', linkedTaskId:'' });
   const fresh = tmp.querySelector('.goal-row');
   row.parentElement.insertBefore(fresh, row.nextSibling);
-  markGoalsDirty();
+  markGoalsDirty(btn);
 }
 function delGoalRow(btn) {
   const row = btn.closest('.goal-row');
   const rows = row.parentElement;
-  markGoalsDirty();
+  markGoalsDirty(btn);
   if (rows.children.length > 1) { row.remove(); return; }
   // 至少保留 1 列：清空而非刪除
   row.querySelector('[data-k="content"]').value = '';
@@ -1916,13 +1957,13 @@ function delGoalRow(btn) {
 }
 
 // 蒐集畫面上 9 個 bucket（3 公司 × 3 週期）非空列 → saveGoals（整桶取代）
+// periodKey 取各 block 自帶的 data-periodkey（三層各自挑日期，不可共用 goalKeys）
 async function saveGoals() {
-  const k = goalKeys();
-  const pkByPeriod = { month:k.month, week:k.week, day:k.day };
   const buckets = [];
   document.querySelectorAll('.goal-co-block').forEach(block => {
     const company = block.dataset.company;
     const period = block.dataset.period;
+    const periodKey = block.dataset.periodkey;
     const items = [];
     block.querySelectorAll('.goal-row').forEach((row, i) => {
       const content = (row.querySelector('[data-k="content"]') || {}).value || '';
@@ -1935,7 +1976,7 @@ async function saveGoals() {
         linkedTaskId: row.dataset.linked || '',
       });
     });
-    buckets.push({ company, period, periodKey: pkByPeriod[period], items });
+    buckets.push({ company, period, periodKey, items });
   });
   try {
     await api('saveGoals', { buckets });
