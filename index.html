@@ -476,8 +476,15 @@
   .goal-period-head{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--primary);margin-bottom:14px;}
   .goal-period-head .pk{margin-left:8px;font-size:12px;font-weight:600;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:6px;}
   /* v2.11：公司名置頂橫向、目標列吃滿整寬（不再被左側 170px 直欄吃掉空間） */
-  .goal-co-block{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-top:1px dashed var(--gray-200);}
-  .goal-co-block:first-of-type{border-top:none;}
+  /* v2.12：三家公司目標區塊各自底色卡片化（南坡萬粉綠／滿屋粉黃／Feeling Bar 粉紅） */
+  .goal-co-block{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px;border-radius:10px;margin-bottom:10px;}
+  .goal-co-block:last-of-type{margin-bottom:0;}
+  .goal-co-block[data-company="npw"]{background:#e7f6ec;}   /* 南坡萬 粉綠 */
+  .goal-co-block[data-company="mw"] {background:#fdf6e0;}   /* 滿屋 粉黃 */
+  .goal-co-block[data-company="fb"] {background:#fdeaf0;}   /* Feeling Bar 粉紅 */
+  [data-theme="dark"] .goal-co-block[data-company="npw"]{background:rgba(16,185,129,.14);}
+  [data-theme="dark"] .goal-co-block[data-company="mw"] {background:rgba(234,179,8,.14);}
+  [data-theme="dark"] .goal-co-block[data-company="fb"] {background:rgba(236,72,153,.14);}
   .goal-co-name{width:100%;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:0;}
   .goal-add-co{margin-left:auto;}
   .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
@@ -514,8 +521,7 @@
   .goal-day-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
   .goal-day-col{border:1px solid var(--gray-200);border-radius:10px;padding:8px 10px;background:var(--gray-50);min-width:0;}
   .goal-day-col-head{font-size:13px;font-weight:700;color:var(--primary);padding:2px 2px 8px;border-bottom:1px dashed var(--gray-200);margin-bottom:8px;}
-  .goal-day-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;border-top:1px dashed var(--gray-200);padding:8px 0;}
-  .goal-day-col .goal-co-block:first-of-type{border-top:none;}
+  .goal-day-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;padding:8px 10px;margin-bottom:8px;}
   .goal-day-col .goal-co-name{width:100%;padding-top:0;font-size:13px;}
   .goal-day-col .goal-rows{width:100%;}
   .goal-day-col .goal-row{flex-wrap:wrap;}
