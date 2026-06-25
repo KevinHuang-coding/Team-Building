@@ -475,9 +475,10 @@
   .goal-period-card{background:var(--bg-card);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
   .goal-period-head{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:var(--primary);margin-bottom:14px;}
   .goal-period-head .pk{margin-left:8px;font-size:12px;font-weight:600;color:var(--gray-500);background:var(--gray-100);padding:2px 8px;border-radius:6px;}
-  .goal-co-block{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px dashed var(--gray-200);}
+  /* v2.11：公司名置頂橫向、目標列吃滿整寬（不再被左側 170px 直欄吃掉空間） */
+  .goal-co-block{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-top:1px dashed var(--gray-200);}
   .goal-co-block:first-of-type{border-top:none;}
-  .goal-co-name{width:170px;flex:none;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:6px;}
+  .goal-co-name{width:100%;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:0;}
   .goal-add-co{margin-left:auto;}
   .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
   .goal-rows{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
