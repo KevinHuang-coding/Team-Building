@@ -508,6 +508,19 @@
   [data-theme="dark"] .goal-date-input{color:#F1F5F9;}
   [data-theme="dark"] .goal-date-input::-webkit-calendar-picker-indicator{filter:invert(1);}
   [data-theme="dark"] .goal-mini-today{background:var(--bg-card);color:var(--gray-500);}
+  /* v2.9：每日目標三欄並排（明天/今天/昨天） */
+  .goal-day-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+  .goal-day-col{border:1px solid var(--gray-200);border-radius:10px;padding:8px 10px;background:var(--gray-50);min-width:0;}
+  .goal-day-col-head{font-size:13px;font-weight:700;color:var(--primary);padding:2px 2px 8px;border-bottom:1px dashed var(--gray-200);margin-bottom:8px;}
+  .goal-day-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;border-top:1px dashed var(--gray-200);padding:8px 0;}
+  .goal-day-col .goal-co-block:first-of-type{border-top:none;}
+  .goal-day-col .goal-co-name{width:auto;padding-top:0;font-size:13px;}
+  .goal-day-col .goal-rows{width:100%;}
+  .goal-day-col .goal-row{flex-wrap:wrap;}
+  .goal-day-col .goal-input{flex:1 1 120px;min-width:90px;}
+  .goal-day-col .goal-emp-select{width:120px;}
+  @media (max-width:1100px){ .goal-day-grid{grid-template-columns:1fr;} }
+  [data-theme="dark"] .goal-day-col{background:var(--bg-card);}
   /* 連動掛任務卡 Modal 候選列 */
   .goal-cand{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:9px;margin-bottom:8px;}
   .goal-cand.suggest{border-color:var(--primary);background:var(--primary-light);}
@@ -1857,22 +1870,53 @@ function periodPkLabel(period, key) {
   if (period === 'week')  return key + '（' + weekRangeLabelFromKey(key) + '）';
   return key.slice(5).replace('-', '/') + '（' + weekdayTW(key) + '）';
 }
-// 只重渲染單一週期卡（不動其他兩層）
+// 日鍵 ± delta 天（UTC 整數運算、無時區位移）
+function dayKeyShift(dayKey, delta) {
+  const d = _goalDateUTC(dayKey); d.setUTCDate(d.getUTCDate() + delta);
+  const p = n => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+}
+// 相對「真實今天」的中文詞（後天/明天/今天/昨天/前天），超出則空字串
+function dayRelLabel(dayKey) {
+  const diff = Math.round((_goalDateUTC(dayKey) - _goalDateUTC(localDay(new Date()))) / 86400000);
+  return ({ '2':'後天', '1':'明天', '0':'今天', '-1':'昨天', '-2':'前天' })[String(diff)] || '';
+}
+function dayColHeadHtml(dayKey) {
+  const rel = dayRelLabel(dayKey);
+  return `${rel ? '<b>' + rel + '</b> ' : ''}${dayKey.slice(5).replace('-', '/')}（${weekdayTW(dayKey)}）`;
+}
+// v2.9：每日目標三欄並排（左=隔天/明天、中=錨定日/今天、右=前一天/昨天）；各欄各自一個 dayKey bucket
+function renderDayColumns(anchorKey) {
+  const cols = [dayKeyShift(anchorKey, 1), anchorKey, dayKeyShift(anchorKey, -1)];
+  return `<div class="goal-day-grid">
+    ${cols.map(dk => `
+      <div class="goal-day-col">
+        <div class="goal-day-col-head">${dayColHeadHtml(dk)}</div>
+        ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, 'day', dk)).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+// 只重渲染單一週期卡（不動其他兩層）；day 卡為三欄並排（明天/今天/昨天 比對）
 function renderPeriodCard(period) {
   const el = document.getElementById('goal-card-' + period);
   if (!el) return;
   const key = periodKeyOf(period);
   const meta = GOAL_PERIOD_META[period];
   const cur = isPeriodCurrent(period);
+  const headPk = period === 'day' ? '明天 ｜ 今天 ｜ 昨天 比對' : escapeHtml(periodPkLabel(period, key));
+  const body = period === 'day'
+    ? renderDayColumns(key)
+    : GOAL_COMPANIES.map(co => goalCompanyBlock(co, period, key)).join('');
   el.innerHTML = `
     <div class="goal-period-head">
-      ${meta.icon} ${meta.label} <span class="pk">${escapeHtml(periodPkLabel(period, key))}</span>
+      ${meta.icon} ${meta.label} <span class="pk">${headPk}</span>
       <span class="goal-card-picker">
         ${periodPickerHtml(period, key)}
         <button type="button" class="goal-mini-today" onclick="onGoalPeriodToday('${period}')" ${cur ? 'disabled' : ''}>本${period === 'month' ? '月' : period === 'week' ? '週' : '日'}</button>
       </span>
     </div>
-    ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, period, key)).join('')}`;
+    ${body}`;
   _goalDirty[period] = false;   // 該層剛渲染＝乾淨
 }
 
