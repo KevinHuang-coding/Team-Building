@@ -496,7 +496,7 @@
   .goal-input{flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:13.5px;font-family:inherit;background:var(--bg-card);color:var(--gray-800);}
   .goal-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light);}
   .goal-row.done .goal-input{text-decoration:line-through;color:var(--gray-500);background:var(--gray-100);}
-  .goal-emp-select{flex:none;width:130px;padding:7px 8px;border:1px solid var(--gray-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--gray-50);color:var(--gray-700);}
+  .goal-emp-select{flex:none;width:88px;padding:7px 6px;border:1px solid var(--gray-200);border-radius:8px;font-size:12.5px;font-family:inherit;background:var(--gray-50);color:var(--gray-700);}
   .goal-emp-select:focus{outline:none;border-color:var(--primary);}
   .goal-btn-add{width:26px;height:26px;flex:none;border:none;border-radius:7px;background:var(--primary);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
   .goal-btn-add:hover{background:var(--primary-dark);}
@@ -526,7 +526,7 @@
   .goal-day-col .goal-rows{width:100%;}
   .goal-day-col .goal-row{flex-wrap:wrap;}
   .goal-day-col .goal-input{flex:1 1 120px;min-width:90px;}
-  .goal-day-col .goal-emp-select{width:120px;}
+  .goal-day-col .goal-emp-select{width:88px;}
   @media (max-width:1100px){ .goal-day-grid{grid-template-columns:1fr;} }
   [data-theme="dark"] .goal-day-col{background:var(--bg-card);}
   /* 連動掛任務卡 Modal 候選列 */
@@ -1842,7 +1842,7 @@ function findTaskById(company, id) {
 function staffOptions(companyKey, selected) {
   const list = (STATE.accounts && STATE.accounts[companyKey]) || [];
   const names = list.map(u => u.username);
-  return '<option value="">— 負責員工 —</option>' +
+  return '<option value="">員工</option>' +
     names.map(n => `<option value="${escapeHtml(n)}" ${n === selected ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
 }
 
@@ -1971,7 +1971,7 @@ function goalRowHtml(company, period, g) {
   if (period === 'day') {
     dayExtra = `
       <select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this)">${staffOptions(company, g.assignee || '')}</select>
-      <button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)">${linked ? '🔗 已掛：' + escapeHtml(_gTrunc(linked.title, 8)) : '🔗 掛任務卡'}</button>`;
+      <button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)" title="${linked ? '已掛任務卡（點可重掛）：' + escapeHtml(linked.title) : '掛任務卡（半自動）'}">${linked ? '✅' : '🔗'}</button>`;
   }
   return `
     <div class="goal-row ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
@@ -2005,7 +2005,7 @@ function delGoalRow(btn) {
   row.dataset.linked = '';
   row.classList.remove('done');
   const dot = row.querySelector('.goal-done-dot'); if (dot) dot.classList.remove('done');
-  const lk = row.querySelector('[data-k="link"]'); if (lk) { lk.classList.remove('linked'); lk.textContent = '🔗 掛任務卡'; }
+  const lk = row.querySelector('[data-k="link"]'); if (lk) { lk.classList.remove('linked'); lk.textContent = '🔗'; lk.title = '掛任務卡（半自動）'; }
 }
 
 // 蒐集畫面上 9 個 bucket（3 公司 × 3 週期）非空列 → saveGoals（整桶取代）
