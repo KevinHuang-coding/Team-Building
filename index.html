@@ -527,6 +527,13 @@
   .goal-day-col .goal-row{flex-wrap:wrap;}
   .goal-day-col .goal-input{flex:1 1 120px;min-width:90px;}
   .goal-day-col .goal-emp-select{width:88px;}
+  /* v2.14：每日目標兩列排版（輸入框獨佔第 1 列吃滿整行；下拉/🔗/− 移到第 2 列） */
+  .goal-row-day{flex-direction:column;align-items:stretch;gap:6px;}
+  .goal-row-day .gr-line{display:flex;align-items:center;gap:8px;}
+  .goal-row-day .gr-line1 .goal-input{flex:1;}
+  .goal-row-day .gr-line2{padding-left:26px;}   /* 對齊輸入框左緣（越過圓點 18px+gap 8px） */
+  .goal-row-day .gr-line2 .goal-btn-del{margin-left:auto;}   /* − 靠右 */
+  .goal-row-day .goal-emp-select{width:120px;}   /* 自成一列、可略寬，較好讀 */
   @media (max-width:1100px){ .goal-day-grid{grid-template-columns:1fr;} }
   [data-theme="dark"] .goal-day-col{background:var(--bg-card);}
   /* 連動掛任務卡 Modal 候選列 */
@@ -1967,17 +1974,22 @@ function goalCompanyBlock(company, period, periodKey) {
 function goalRowHtml(company, period, g) {
   const done = String(g.done) === '1' || g.done === true;
   const linked = g.linkedTaskId ? findTaskById(company, g.linkedTaskId) : null;
-  let dayExtra = '';
+  const dotHtml = `<button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>`;
+  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)">`;
+  const delHtml = `<button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>`;
+  // v2.14：每日目標改兩列——第 1 列 圓點+輸入框(吃滿整行)；第 2 列 員工下拉+🔗+−
   if (period === 'day') {
-    dayExtra = `
-      <select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this)">${staffOptions(company, g.assignee || '')}</select>
-      <button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)" title="${linked ? '已掛任務卡（點可重掛）：' + escapeHtml(linked.title) : '掛任務卡（半自動）'}">${linked ? '✅' : '🔗'}</button>`;
+    const selHtml = `<select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this)">${staffOptions(company, g.assignee || '')}</select>`;
+    const linkHtml = `<button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)" title="${linked ? '已掛任務卡（點可重掛）：' + escapeHtml(linked.title) : '掛任務卡（半自動）'}">${linked ? '✅' : '🔗'}</button>`;
+    return `
+    <div class="goal-row goal-row-day ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
+      <div class="gr-line gr-line1">${dotHtml}${inputHtml}</div>
+      <div class="gr-line gr-line2">${selHtml}${linkHtml}${delHtml}</div>
+    </div>`;
   }
   return `
     <div class="goal-row ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
-      <button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>
-      <input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)">${dayExtra}
-      <button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>
+      ${dotHtml}${inputHtml}${delHtml}
     </div>`;
 }
 
