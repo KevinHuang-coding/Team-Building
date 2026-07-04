@@ -1975,11 +1975,11 @@ function goalRowHtml(company, period, g) {
   const done = String(g.done) === '1' || g.done === true;
   const linked = g.linkedTaskId ? findTaskById(company, g.linkedTaskId) : null;
   const dotHtml = `<button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>`;
-  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)">`;
+  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)" onblur="scheduleGoalsAutoSave()">`;
   const delHtml = `<button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>`;
   // v2.14：每日目標改兩列——第 1 列 圓點+輸入框(吃滿整行)；第 2 列 員工下拉+🔗+−
   if (period === 'day') {
-    const selHtml = `<select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this)">${staffOptions(company, g.assignee || '')}</select>`;
+    const selHtml = `<select class="goal-emp-select" data-k="assignee" onchange="markGoalsDirty(this);scheduleGoalsAutoSave()">${staffOptions(company, g.assignee || '')}</select>`;
     const linkHtml = `<button type="button" class="goal-btn-link ${linked ? 'linked' : ''}" data-k="link" onclick="openLinkModal(this)" title="${linked ? '已掛任務卡（點可重掛）：' + escapeHtml(linked.title) : '掛任務卡（半自動）'}">${linked ? '✅' : '🔗'}</button>`;
     return `
     <div class="goal-row goal-row-day ${done ? 'done' : ''}" data-linked="${escapeHtml(g.linkedTaskId || '')}">
@@ -1997,6 +1997,7 @@ function toggleGoalDone(btn) {
   btn.classList.toggle('done');
   btn.closest('.goal-row').classList.toggle('done');
   markGoalsDirty(btn);
+  scheduleGoalsAutoSave();   // v2.15：勾 done 立即（防抖）自動存，免忘記按儲存
 }
 // v2.9：每間公司一顆「＋」（在公司名旁），按下在該公司目標列末尾新增一列
 function addGoalRowToBlock(btn) {
@@ -2011,6 +2012,7 @@ function delGoalRow(btn) {
   const row = btn.closest('.goal-row');
   const rows = row.parentElement;
   markGoalsDirty(btn);
+  scheduleGoalsAutoSave();   // v2.15：刪列自動存
   if (rows.children.length > 1) { row.remove(); return; }
   // 至少保留 1 列：清空而非刪除
   row.querySelector('[data-k="content"]').value = '';
@@ -2020,14 +2022,11 @@ function delGoalRow(btn) {
   const lk = row.querySelector('[data-k="link"]'); if (lk) { lk.classList.remove('linked'); lk.textContent = '🔗'; lk.title = '掛任務卡（半自動）'; }
 }
 
-// 蒐集畫面上 9 個 bucket（3 公司 × 3 週期）非空列 → saveGoals（整桶取代）
-// periodKey 取各 block 自帶的 data-periodkey（三層各自挑日期，不可共用 goalKeys）
-async function saveGoals() {
+// 蒐集畫面上所有 bucket 非空列（periodKey 取各 block 自帶 data-periodkey，三層各自日期）
+function collectGoalBuckets() {
   const buckets = [];
   document.querySelectorAll('.goal-co-block').forEach(block => {
-    const company = block.dataset.company;
     const period = block.dataset.period;
-    const periodKey = block.dataset.periodkey;
     const items = [];
     block.querySelectorAll('.goal-row').forEach((row, i) => {
       const content = (row.querySelector('[data-k="content"]') || {}).value || '';
@@ -2040,14 +2039,37 @@ async function saveGoals() {
         linkedTaskId: row.dataset.linked || '',
       });
     });
-    buckets.push({ company, period, periodKey, items });
+    buckets.push({ company: block.dataset.company, period, periodKey: block.dataset.periodkey, items });
   });
+  return buckets;
+}
+
+// 顯式儲存（按鈕）：存 + 重抓 + 重渲染
+async function saveGoals() {
   try {
-    await api('saveGoals', { buckets });
+    await api('saveGoals', { buckets: collectGoalBuckets() });
     STATE = await api('getInitData'); cacheState();
     showToast('目標已儲存', 'success');
     go('goals');
   } catch (e) { showToast(e.message, 'error'); }
+}
+
+// v2.15：自動存檔（勾 done／改員工／刪列／離開輸入框觸發）——靜默、不重渲染、背景刷新 STATE
+// 解決「勾了 done 忘記按儲存、隔天變回未完成」的陷阱
+let _goalsAutoTimer = null;
+function scheduleGoalsAutoSave() {
+  if (_goalsAutoTimer) clearTimeout(_goalsAutoTimer);
+  _goalsAutoTimer = setTimeout(() => { _goalsAutoTimer = null; autoSaveGoals(); }, 600);
+}
+async function autoSaveGoals() {
+  const buckets = collectGoalBuckets();
+  try {
+    await api('saveGoals', { buckets });
+    // 背景刷新 STATE（讓頁內導覽回來時一致），但不重渲染、不打斷當前編輯
+    STATE = await api('getInitData'); cacheState();
+    GOAL_PERIODS.forEach(p => { _goalDirty[p] = false; });
+    showToast('已自動儲存', 'success');
+  } catch (e) { showToast('自動儲存失敗：' + e.message, 'error'); }
 }
 
 // ── 每日目標「連動掛任務卡」半自動（⭐ 建議 → 子任務 / ⚡ 機動卡，零新增端點） ──
