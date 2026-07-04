@@ -487,6 +487,11 @@
   [data-theme="dark"] .goal-co-block[data-company="fb"] {background:rgba(236,72,153,.14);}
   .goal-co-name{width:100%;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--gray-700);padding-top:0;}
   .goal-add-co{margin-left:auto;}
+  .goals-save-status{font-size:12px;font-weight:600;white-space:nowrap;color:var(--gray-500);transition:color .2s;}
+  .goals-save-status.pending{color:var(--gray-500);}
+  .goals-save-status.saving{color:var(--primary);}
+  .goals-save-status.ok{color:#16a34a;}
+  .goals-save-status.err{color:var(--accent);}
   .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
   .goal-rows{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
   .goal-row{display:flex;align-items:center;gap:8px;}
@@ -771,7 +776,7 @@ async function api(action, params = {}, opts = {}) {
     };
   }
 
-  showLoading(true);
+  if (!opts.silent) showLoading(true);
   try {
     const r = await fetch(url, init);
     const j = await r.json();
@@ -781,7 +786,7 @@ async function api(action, params = {}, opts = {}) {
     if (e instanceof TypeError) throw new Error('連線失敗，請確認 URL 與網路');
     throw e;
   } finally {
-    showLoading(false);
+    if (!opts.silent) showLoading(false);
   }
 }
 
@@ -1862,9 +1867,12 @@ function renderGoals(m) {
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
       <div>
         <h2 class="page-title">📌 月/週/日目標</h2>
-        <p class="page-sub">Kevin執行長 專屬 ・ 跨三公司一頁總覽 ・ 月/週/日可各自挑日期、各自獨立顯示</p>
+        <p class="page-sub">Kevin執行長 專屬 ・ 跨三公司一頁總覽 ・ 月/週/日可各自挑日期 ・ <b style="color:var(--primary)">輸入即自動儲存</b></p>
       </div>
-      <button class="btn btn-primary" onclick="saveGoals()">💾 儲存目標</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="goalsSaveStatus" class="goals-save-status"></span>
+        <button class="btn btn-primary" onclick="saveGoals()" title="立即強制儲存並重整">💾 立即儲存</button>
+      </div>
     </div>
     ${GOAL_PERIODS.map(p => `<div class="goal-period-card" id="goal-card-${p}"></div>`).join('')}
     <div class="goal-legend">
@@ -1975,7 +1983,7 @@ function goalRowHtml(company, period, g) {
   const done = String(g.done) === '1' || g.done === true;
   const linked = g.linkedTaskId ? findTaskById(company, g.linkedTaskId) : null;
   const dotHtml = `<button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>`;
-  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this)" onblur="scheduleGoalsAutoSave()">`;
+  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this);scheduleGoalsAutoSave()" onblur="scheduleGoalsAutoSave()">`;
   const delHtml = `<button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>`;
   // v2.14：每日目標改兩列——第 1 列 圓點+輸入框(吃滿整行)；第 2 列 員工下拉+🔗+−
   if (period === 'day') {
@@ -2045,31 +2053,62 @@ function collectGoalBuckets() {
 }
 
 // 顯式儲存（按鈕）：存 + 重抓 + 重渲染
+// 顯式「立即儲存」按鈕：存 + 重抓 + 重渲染（權威刷新）
 async function saveGoals() {
   try {
     await api('saveGoals', { buckets: collectGoalBuckets() });
     STATE = await api('getInitData'); cacheState();
-    showToast('目標已儲存', 'success');
     go('goals');
-  } catch (e) { showToast(e.message, 'error'); }
+    setGoalsSaveStatus('✓ 已儲存', 'ok');
+  } catch (e) { showToast(e.message, 'error'); setGoalsSaveStatus('⚠ 儲存失敗', 'err'); }
 }
 
-// v2.15：自動存檔（勾 done／改員工／刪列／離開輸入框觸發）——靜默、不重渲染、背景刷新 STATE
-// 解決「勾了 done 忘記按儲存、隔天變回未完成」的陷阱
+// v2.16：預設「輸入即自動儲存」——打字(防抖0.8s)/勾done/改員工/刪列/blur 皆自動存
+// 靜默(不觸發全頁 loading)、不重渲染(不打斷編輯)、本地 patch STATE(不多打一次 getInitData)
 let _goalsAutoTimer = null;
+let _goalsSaving = false;
+function setGoalsSaveStatus(text, cls) {
+  const el = document.getElementById('goalsSaveStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'goals-save-status ' + (cls || '');
+}
 function scheduleGoalsAutoSave() {
+  setGoalsSaveStatus('編輯中…', 'pending');
   if (_goalsAutoTimer) clearTimeout(_goalsAutoTimer);
-  _goalsAutoTimer = setTimeout(() => { _goalsAutoTimer = null; autoSaveGoals(); }, 600);
+  _goalsAutoTimer = setTimeout(() => { _goalsAutoTimer = null; autoSaveGoals(); }, 800);
 }
 async function autoSaveGoals() {
+  if (_goalsSaving) { scheduleGoalsAutoSave(); return; }   // 有存檔進行中→稍後再存
+  _goalsSaving = true;
   const buckets = collectGoalBuckets();
+  setGoalsSaveStatus('儲存中…', 'saving');
   try {
-    await api('saveGoals', { buckets });
-    // 背景刷新 STATE（讓頁內導覽回來時一致），但不重渲染、不打斷當前編輯
-    STATE = await api('getInitData'); cacheState();
+    await api('saveGoals', { buckets }, { silent: true });   // silent＝不閃全頁 loading
+    patchStateGoalsFromBuckets(buckets);                     // 本地同步 STATE，免再打 getInitData
     GOAL_PERIODS.forEach(p => { _goalDirty[p] = false; });
-    showToast('已自動儲存', 'success');
-  } catch (e) { showToast('自動儲存失敗：' + e.message, 'error'); }
+    setGoalsSaveStatus('✓ 已自動儲存', 'ok');
+  } catch (e) {
+    setGoalsSaveStatus('⚠ 儲存失敗（點「立即儲存」重試）', 'err');
+    showToast('自動儲存失敗：' + e.message, 'error');
+  } finally { _goalsSaving = false; }
+}
+// 把剛存的 buckets 同步進 STATE.goals（頁內導覽回來時一致），不需重抓後端
+function patchStateGoalsFromBuckets(buckets) {
+  if (!Array.isArray(STATE.goals)) STATE.goals = [];
+  buckets.forEach(b => {
+    STATE.goals = STATE.goals.filter(g =>
+      !(g.company === b.company && g.period === b.period && String(g.periodKey) === String(b.periodKey)));
+    (b.items || []).forEach((it, i) => {
+      STATE.goals.push({
+        company: b.company, period: b.period, periodKey: b.periodKey,
+        content: it.content, done: it.done ? '1' : '',
+        assignee: it.assignee || '', sortOrder: (typeof it.sortOrder === 'number') ? it.sortOrder : i,
+        linkedTaskId: it.linkedTaskId || '',
+      });
+    });
+  });
+  cacheState();
 }
 
 // ── 每日目標「連動掛任務卡」半自動（⭐ 建議 → 子任務 / ⚡ 機動卡，零新增端點） ──
