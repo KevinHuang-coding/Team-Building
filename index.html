@@ -1045,7 +1045,9 @@ function enterApp() {
   document.getElementById('topUser').textContent = displayName + '・' + roleLabel(STATE.me.role) + ((STATE.me.eligibleCompanies && STATE.me.eligibleCompanies.length>=2) ? '（可跨公司）' : '');
   renderTopCompany();
   renderSideNav();
-  go('kanban');
+  // v2.18：認證成功後的落地頁依身分分流——主公落「月/週/日目標」，員工/admin 仍落「任務看板」
+  // （只改這處落地；其餘 go('kanban')（篩選、存檔後返回等）一律不動）
+  go(STATE.me && STATE.me.isLord ? 'goals' : 'kanban');
 }
 function roleLabel(r) {
   return ({ lord:'總指揮', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
@@ -1132,6 +1134,8 @@ function renderSideNav() {
   document.querySelectorAll('.sidenav-item').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
 }
 function go(page) {
+  // v2.17：離開週報頁且有未存編輯 → 先問（取消則留在原頁）。page==='report' 不擋（存檔後/放棄變更會重畫）
+  if (currentPage === 'report' && page !== 'report' && !_confirmLeaveReport()) return;
   // 維護頁面歷史（非「回上一頁」操作時才 push）
   if (!_navigatingBack && pageHistory[pageHistory.length - 1] !== page) {
     pageHistory.push(page);
@@ -1198,6 +1202,9 @@ document.addEventListener('keydown', e => {
   if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); }
 });
 document.getElementById('refreshBtn').addEventListener('click', async () => {
+  // v2.17：🔄 會重讀伺服器並重畫 → 未存的週報／進度回報會被沖掉，先守門
+  if (currentPage === 'report' && !_confirmLeaveReport()) return;
+  if (!_confirmLeaveNote()) return;
   try {
     STATE = await api('getInitData');
     cacheState();
@@ -1850,10 +1857,21 @@ function goalsForBucket(company, period, periodKey) {
 function findTaskById(company, id) {
   return ((STATE.tasks && STATE.tasks[company]) || []).find(t => t.id === id) || null;
 }
+// v2.18：已離職→隱藏於人員下拉（主公拍板「先隱藏即可」：不刪帳號、不動其名下任務、歷史卡保留姓名）
+// 要讓某人重新出現，把名字從這裡移除即可（可逆）。
+const HIDDEN_STAFF = ['Dora', '冠冠'];
+
 // 負責員工下拉名單來自 lord 的 STATE.accounts（getInitData 已給、密碼已 strip）—零後端改動
+// v2.18：改為三公司聯集去重（部分員工跨公司負責業務），並濾掉已離職者
 function staffOptions(companyKey, selected) {
-  const list = (STATE.accounts && STATE.accounts[companyKey]) || [];
-  const names = list.map(u => u.username);
+  const set = new Set();
+  const acc = STATE.accounts || {};
+  ['npw', 'mw', 'fb'].forEach(c => (acc[c] || []).forEach(u => {
+    if (u.username && HIDDEN_STAFF.indexOf(u.username) < 0) set.add(u.username);
+  }));
+  // 保險：已選但已不在名單者（歷史指派／已離職）仍保留該選項，避免顯示壞掉
+  if (selected) set.add(selected);
+  const names = Array.from(set).sort();
   return '<option value="">員工</option>' +
     names.map(n => `<option value="${escapeHtml(n)}" ${n === selected ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
 }
@@ -2211,13 +2229,14 @@ async function _doLinkSave(task, kindLabel) {
     STATE.tasks[task.company].push(newTask);
     // 把該 goal 列的 linkedTaskId 設為新卡 id
     if (_linkCtx && _linkCtx.row) _linkCtx.row.dataset.linked = newTask.id;
-    closeModal();
+    closeModal(true);
     showToast('已掛上『' + kindLabel + '』：' + _gTrunc(task.title, 12), 'success');
     await saveGoals();   // 持久化 goals（含 linkedTaskId）並重抓 STATE 重渲染
   } catch (e) { showToast(e.message, 'error'); }
 }
 
 function openTaskModal(id) {
+  _noteDirty = false;   // v2.17：新開／重開任務卡＝乾淨狀態
   const tasks = STATE.tasks[currentCompany] || [];
   const t = id ? tasks.find(x => x.id === id) : null;
   const isNew = !t;
@@ -2265,6 +2284,8 @@ function openTaskModal(id) {
     tasks.forEach(t => { if (t.assignee) set.add(t.assignee); if (t.creator) set.add(t.creator); });
     userList = Array.from(set);
   }
+  // v2.18：濾掉已離職者（HIDDEN_STAFF）；但若本卡原本就指派給他，保留該選項以免歷史資料顯示壞掉
+  userList = userList.filter(n => HIDDEN_STAFF.indexOf(n) < 0 || n === data.assignee);
 
   const canDelete = me.isLord || me.role==='admin' || data.creator===me.username;
   const canEdit = me.isLord || ['admin','manager'].indexOf(me.role)>=0
@@ -2464,20 +2485,20 @@ function openTaskModal(id) {
           <div style="font-weight:600;font-size:12px;color:var(--primary);margin-bottom:8px;">✍️ 新增本日進度（可留空）</div>
           <label class="field-label" style="margin-top:0;font-weight:700;color:var(--gray-800);">🎯 執行計畫</label>
           <div style="position:relative;">
-            <textarea class="field-textarea" id="f-note-plan" style="min-height:130px;" placeholder="例：今日已聯繫供應商X，等明日報價。&#10;・按列點按鈕可逐項羅列工作進度"></textarea>
+            <textarea class="field-textarea" id="f-note-plan" oninput="markNoteDirty()" style="min-height:130px;" placeholder="例：今日已聯繫供應商X，等明日報價。&#10;・按列點按鈕可逐項羅列工作進度"></textarea>
             <button type="button" onclick="insertBullet('f-note-plan')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
           </div>
           <details style="margin-top:10px;">
             <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-800);font-weight:600;padding:4px 0;">💡 成效（選填，點此展開）</summary>
             <div style="position:relative;margin-top:6px;">
-              <textarea class="field-textarea" id="f-note-effect" style="min-height:80px;" placeholder="例：客戶回應正面、上門詢價較上週成長 15%。"></textarea>
+              <textarea class="field-textarea" id="f-note-effect" oninput="markNoteDirty()" style="min-height:80px;" placeholder="例：客戶回應正面、上門詢價較上週成長 15%。"></textarea>
               <button type="button" onclick="insertBullet('f-note-effect')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
             </div>
           </details>
           <details style="margin-top:8px;">
             <summary style="cursor:pointer;font-size:12.5px;color:var(--gray-800);font-weight:600;padding:4px 0;">⚠️ 是否需修正（選填，點此展開）</summary>
             <div style="position:relative;margin-top:6px;">
-              <textarea class="field-textarea" id="f-note-needfix" style="min-height:80px;" placeholder="例：物流方案需重新評估、考慮改採宅配。"></textarea>
+              <textarea class="field-textarea" id="f-note-needfix" oninput="markNoteDirty()" style="min-height:80px;" placeholder="例：物流方案需重新評估、考慮改採宅配。"></textarea>
               <button type="button" onclick="insertBullet('f-note-needfix')" style="position:absolute;right:6px;bottom:6px;padding:3px 9px;font-size:11px;background:var(--white);border:1px solid var(--gray-300);border-radius:5px;cursor:pointer;color:var(--gray-700);">・ 列點</button>
             </div>
           </details>
@@ -2636,7 +2657,7 @@ async function saveTask(id) {
   try {
     await api('saveTask', { task });
     STATE = await api('getInitData'); cacheState();
-    closeModal();
+    closeModal(true);   // 已存檔→強制關，不觸發未存守門
     go('kanban');
     showToast(id?'已儲存':'已建立任務','success');
   } catch (e) {
@@ -2648,7 +2669,7 @@ async function deleteTask(id) {
   try {
     await api('deleteTask', { company: currentCompany, taskId: id });
     STATE = await api('getInitData'); cacheState();
-    closeModal();
+    closeModal(true);
     go('kanban');
     showToast('已刪除','warn');
   } catch (e) {
@@ -2734,7 +2755,7 @@ function renderReport(m) {
       ` : ''}
 
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
-        <button class="btn btn-ghost" onclick="go('report')">放棄變更</button>
+        <button class="btn btn-ghost" onclick="_reportDirty=false;go('report')">放棄變更</button>
         <button class="btn btn-primary" onclick="saveReport(${isOneOnOneWeek})">儲存週報</button>
       </div>
     </div>
@@ -2756,6 +2777,9 @@ function renderReport(m) {
       </div>
     `).join('') || `<div class="empty-state">尚無歷史週報</div>`}
   `;
+  // v2.17：剛渲染＝乾淨；綁定所有欄位輸入監聽（未存保護）
+  _reportDirty = false;
+  bindReportDirtyWatchers();
 }
 function reportField(id, num, label, val, color, hint, type='area') {
   return `
@@ -2975,7 +2999,7 @@ async function saveUser(company, originalUsername) {
   if (!user.username) { showToast('使用者名稱必填','error'); return; }
   try {
     await api('saveUser', { company, user, originalUsername });
-    closeModal();
+    closeModal(true);
     go('people');
     showToast('已儲存','success');
   } catch (e) {
@@ -3140,11 +3164,11 @@ function renderNoteEntry(n, idx, taskId) {
     html += `<div id="note-edit-${idx}" style="display:none;padding-top:4px;">`;
     html += `<div style="color:var(--gray-500);font-size:11px;margin-bottom:6px;">✏️ 編輯這筆進度（🕒 ${ts}）</div>`;
     html += `<label class="field-label" style="margin-top:0;font-size:11.5px;">🎯 執行計畫</label>`;
-    html += `<textarea class="field-textarea" id="edit-note-plan-${idx}" style="min-height:90px;">${plan}</textarea>`;
+    html += `<textarea class="field-textarea" id="edit-note-plan-${idx}" oninput="markNoteDirty()" style="min-height:90px;">${plan}</textarea>`;
     html += `<label class="field-label" style="font-size:11.5px;">💡 成效（選填）</label>`;
-    html += `<textarea class="field-textarea" id="edit-note-effect-${idx}" style="min-height:60px;">${effect}</textarea>`;
+    html += `<textarea class="field-textarea" id="edit-note-effect-${idx}" oninput="markNoteDirty()" style="min-height:60px;">${effect}</textarea>`;
     html += `<label class="field-label" style="font-size:11.5px;">⚠️ 是否需修正（選填）</label>`;
-    html += `<textarea class="field-textarea" id="edit-note-needfix-${idx}" style="min-height:60px;">${needFix}</textarea>`;
+    html += `<textarea class="field-textarea" id="edit-note-needfix-${idx}" oninput="markNoteDirty()" style="min-height:60px;">${needFix}</textarea>`;
     html += `<div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end;">`;
     html += `<button type="button" class="btn btn-ghost" style="padding:5px 12px;font-size:11.5px;" onclick="toggleNoteEdit(${idx})">取消</button>`;
     html += `<button type="button" class="btn btn-primary" style="padding:5px 14px;font-size:11.5px;" onclick="updateProgressNote('${taskId}', ${idx})">💾 儲存修改</button>`;
@@ -3234,10 +3258,15 @@ async function saveProgressNote(taskId) {
 
 // v1.6：一鍵把任務加入本週週報
 async function appendTaskToReport(taskId) {
+  // v2.17：彙整會重載 STATE，週報頁若有未存手動內容會被沖掉 → 先提醒
+  if (currentPage === 'report' && _reportDirty &&
+      !confirm('你的週報有未儲存編輯。建議先按「儲存週報」再彙整，否則手動輸入可能遺失。仍要繼續彙整？')) return;
   try {
     const r = await api('appendTaskToReport', { taskId });
     showToast('✅ 已彙整本週進度回報到週報（執行計畫／成效／需修正三欄，共 ' + (r.notesCount||0) + ' 筆紀錄）', 'success');
     STATE = await api('getInitData'); cacheState();
+    // v2.17：彙整後即時重畫週報頁，讓結果看得到（原本要手動切頁才看到）
+    if (currentPage === 'report') { _reportDirty = false; go('report'); }
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -3356,7 +3385,7 @@ async function deleteUser(company, username) {
   if (!confirm('確定刪除此使用者？')) return;
   try {
     await api('deleteUser', { company, username });
-    closeModal();
+    closeModal(true);
     go('people');
     showToast('已刪除','warn');
   } catch (e) {
@@ -3695,7 +3724,32 @@ function showModal({ title, body, foot }) {
   document.getElementById('modalMask').classList.add('show');
   refreshBackBtnState();
 }
-function closeModal() {
+// v2.17：未存編輯保護（兩條路徑）——週報頁 _reportDirty ／ 任務卡進度回報 _noteDirty
+// 起因：小李回報「週報寫了很多，一儲存又恢復原稿」；根因＝重畫會用伺服器舊值沖掉未存內容。
+// 沿用目標頁 _goalDirty 的守門模式。
+let _reportDirty = false;
+let _noteDirty   = false;
+function markReportDirty() { _reportDirty = true; }
+function markNoteDirty()   { _noteDirty = true; }
+function _confirmLeaveReport() {
+  return !_reportDirty || confirm('週報有未儲存的編輯，離開／重新整理會遺失，確定？');
+}
+function _confirmLeaveNote() {
+  return !_noteDirty || confirm('進度回報有未儲存的內容，關閉會遺失，確定？');
+}
+// 綁定週報所有欄位：一有輸入就標 dirty（r-q1~q3 只有一對一週次才有，if(el) 容錯）
+function bindReportDirtyWatchers() {
+  ['r-plan','r-effect','r-needFix','r-done','r-block','r-next','r-decide','r-mood','r-q1','r-q2','r-q3']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', markReportDirty); });
+}
+// 兜底：關分頁／瀏覽器重新整理時，未存的週報或進度回報會提示（目標頁已自動存，不需納入）
+window.addEventListener('beforeunload', e => {
+  if (_reportDirty || _noteDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+function closeModal(force) {
+  if (!force && !_confirmLeaveNote()) return;   // v2.17：未存進度回報守門
+  _noteDirty = false;
   document.getElementById('modalMask').classList.remove('show');
   refreshBackBtnState();
 }
