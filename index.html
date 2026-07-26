@@ -496,6 +496,14 @@
   .crm-vbtn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
   [data-theme="dark"] .crm-col{background:rgba(255,255,255,.04);}
   [data-theme="dark"] .crm-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.5);}
+  /* v2.21：今日跟進置頂區 */
+  .crm-today{background:var(--bg-card);border:1.5px solid var(--orange);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .crm-today-head{font-weight:800;font-size:13px;color:var(--orange);display:flex;gap:6px;align-items:center;}
+  .crm-today-head span{font-size:11px;color:var(--gray-500);font-weight:600;}
+  .crm-today-chip{border:1px solid var(--gray-200);border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;background:var(--bg-card);font-weight:600;}
+  .crm-today-chip em{font-style:normal;font-size:10.5px;color:var(--gray-500);margin-left:4px;}
+  .crm-today-chip.hot{border-color:var(--accent);}
+  .crm-today-chip.hot em{color:var(--accent);font-weight:700;}
   [data-theme="dark"] .gantt-day.weekend,[data-theme="dark"] .gantt-col.weekend{background:rgba(192,0,0,.18);}
   [data-theme="dark"] .gantt-label-col,[data-theme="dark"] .gantt-head{background:var(--bg-card);}
 
@@ -608,7 +616,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.20.1 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.21 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -741,6 +749,7 @@ const STAGE_DEF = [
 ];
 const STAGE_MAP = Object.fromEntries(STAGE_DEF.map(s => [s.k, s]));
 const CRM_STALE_DAYS = 7;   // 客戶開發卡 N 天無活動 → 久未跟進紅標
+const CRM_REPEAT_STALE_DAYS = 30;   // v2.21：成交/回購客戶 N 天無動靜 → 回購健康燈 🔔（流失是無聲的）
 function fmtMoney(n){ n = Number(n)||0; return n ? 'NT$ ' + n.toLocaleString('zh-TW') : '—'; }
 const AUTH = {
   L1: '🟢 L1 自決即報',
@@ -1586,6 +1595,7 @@ function renderGantt(m) {
   const staleDays = t => Math.max(0, diffDays(lastAct(t), todayStr));
   const isStale = t => isActive(t) && staleDays(t) >= CRM_STALE_DAYS;
   const nextActOverdue = t => isActive(t) && t.nextActionDate && t.nextActionDate < todayStr;
+  const repeatStale = t => (stageOf(t)==='won' || stageOf(t)==='repeat') && t.status !== 'failed' && staleDays(t) >= CRM_REPEAT_STALE_DAYS;   // v2.21：回購健康燈
 
   // ── v2.20：KPI（Salesforce 三數字：管線總值/加權預測/已成交；＋行為健康度）──
   let pipeSum = 0, weightSum = 0, wonSum = 0, weekActive = 0, staleCount = 0;
@@ -1724,6 +1734,7 @@ function renderGantt(m) {
           <div class="crm-card-meta"><span>${fmtMoney(t.dealValue)}</span><span>${escapeHtml(t.assignee||'未指派')}</span></div>
           ${t.nextActionDate ? `<div class="crm-card-next ${nOver?'overdue':''}">📅 下一步 ${t.nextActionDate.slice(5)}${nOver?'（已過期）':''}</div>` : ''}
           ${isStale(t) ? `<div class="crm-card-stale">🔴 ${staleDays(t)} 天沒動靜</div>` : ''}
+          ${repeatStale(t) ? `<div class="crm-card-stale" style="color:var(--orange);">🔔 ${staleDays(t)} 天沒回購</div>` : ''}
           ${t.status==='done' ? '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:3px;">✅ 任務完成</div>'
             : t.status==='failed' ? `<div style="font-size:10px;color:var(--accent);font-weight:700;margin-top:3px;">❌ 失單${t.lostReason?'：'+escapeHtml(t.lostReason):''}</div>` : ''}
         </div>`;
@@ -1750,7 +1761,7 @@ function renderGantt(m) {
       <div class="crm-cust-row">
         <div class="crm-cust-head">
           <span class="crm-cust-name">${escapeHtml(k)}</span>
-          <span class="crm-cust-meta">最高階段 ${best.label} ・ ${ts.length} 筆生意 ・ ${fmtMoney(sum)} ・ 最近動靜 ${latest}${anyStale?' <b style="color:var(--accent);">🔴 久未跟進</b>':''}</span>
+          <span class="crm-cust-meta">最高階段 ${best.label} ・ ${ts.length} 筆生意 ・ ${fmtMoney(sum)} ・ 最近動靜 ${latest}${anyStale?' <b style="color:var(--accent);">🔴 久未跟進</b>':''}${ts.some(repeatStale)?' <b style="color:var(--orange);">🔔 久未回購</b>':''}</span>
         </div>
         <div class="crm-cust-chips">${chips}</div>
       </div>`;
@@ -1770,6 +1781,25 @@ function renderGantt(m) {
         </div>
       </div>
       ${groupsHtml}
+    </div>`;
+
+  // v2.21：今日跟進置頂區（一句話定義「今天該跟進誰」的落地）：行動日到期/過期＋久未跟進＋久未回購；staff 只見自己的
+  const isLeaderView = STATE.me.isLord || ['admin','manager'].indexOf(STATE.me.role) >= 0;
+  const mineFn = t => isLeaderView || t.assignee === STATE.me.username || (t.collaborators||[]).indexOf(STATE.me.username) >= 0;
+  const dueList = items.filter(t => mineFn(t) && (
+      (isActive(t) && ((t.nextActionDate && t.nextActionDate <= todayStr) || isStale(t))) || repeatStale(t)
+    )).sort((a,b) => (a.nextActionDate||'9999') < (b.nextActionDate||'9999') ? -1 : 1);
+  const todayHtml = !items.length ? '' : `
+    <div class="crm-today" id="crmToday">
+      <div class="crm-today-head">📣 今日跟進${isLeaderView?'（全公司）':'（我的）'}<span>${dueList.length} 件</span></div>
+      ${dueList.length ? dueList.map(t => {
+        const over = t.nextActionDate && t.nextActionDate < todayStr;
+        const reason = (t.nextActionDate && t.nextActionDate <= todayStr && isActive(t))
+          ? ('📅 ' + (over ? '行動日過期 ' + diffDays(t.nextActionDate, todayStr) + ' 天' : '今天行動日'))
+          : isStale(t) ? ('🔴 ' + staleDays(t) + ' 天沒動靜')
+          : ('🔔 ' + staleDays(t) + ' 天沒回購');
+        return `<span class="crm-today-chip ${(over||isStale(t))?'hot':''}" data-gantt-task="${escapeHtml(t.id)}">${escapeHtml(t.customerName||t.title||'(未命名)')} <em>${reason}</em></span>`;
+      }).join('') : '<span style="font-size:12px;color:var(--green);font-weight:700;">✅ 今日無到期跟進，去開發新名單吧</span>'}
     </div>`;
 
   const kpi = (k,v,warn) => `<div class="crm-kpi ${warn?'warn':''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
@@ -1800,6 +1830,7 @@ function renderGantt(m) {
       ${kpi('🔥 本週有動靜', weekActive + ' / ' + items.length + ' 件')}
       ${kpi('🔴 久未跟進（≥' + CRM_STALE_DAYS + '天）', staleCount + ' 件', staleCount > 0)}
     </div>
+    ${todayHtml}
     <div id="ganttWrap">${content}</div>
   `;
 
@@ -1814,6 +1845,12 @@ function renderGantt(m) {
   wrap.addEventListener('click', e => {
     const row = e.target.closest('[data-gantt-task]');
     if (row) openTaskModal(row.dataset.ganttTask);
+  });
+  // v2.21：今日跟進 chip 點擊 → 開任務 Modal
+  const todayStrip = m.querySelector('#crmToday');
+  if (todayStrip) todayStrip.addEventListener('click', e => {
+    const chip = e.target.closest('[data-gantt-task]');
+    if (chip) openTaskModal(chip.dataset.ganttTask);
   });
 
   // 甘特視圖：初次定位捲軸到「今天」前 5 天
@@ -2982,6 +3019,16 @@ function renderReport(m) {
       </div>
     ` : ''}
 
+    ${(() => {   // v2.21：填卡＝免寫週報——CRM 本週動態自動彙整（Grilling 共識第 3 題誘因引擎）
+      const digest = crmWeeklyDigest();
+      if (!digest) return '';
+      return `<div class="related-tasks" style="border-left:3px solid var(--orange);">
+        <div class="related-tasks-title">🤝 本週客戶開發動態（CRM 自動彙整・填了卡就不用重寫）</div>
+        <div style="white-space:pre-wrap;font-size:12px;line-height:1.7;" id="crmDigestText">${escapeHtml(digest)}</div>
+        <div style="text-align:right;margin-top:6px;"><button type="button" class="btn btn-ghost" style="font-size:12px;" onclick="insertCrmDigest()">✏️ 一鍵帶入「執行計畫」欄</button></div>
+      </div>`;
+    })()}
+
     <div class="report-card">
       <!-- v2.1：新三欄結構（對齊進度回報、對齊週報試算表）-->
       <div style="background:#FAFBFF;border-left:3px solid var(--primary);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11.5px;color:var(--gray-600);">
@@ -3046,6 +3093,34 @@ function renderReport(m) {
   // v2.17：剛渲染＝乾淨；綁定所有欄位輸入監聽（未存保護）
   _reportDirty = false;
   bindReportDirtyWatchers();
+}
+// v2.21：彙整本使用者本週（週一起）在客戶開發卡上的進度紀錄 → 週報素材
+function crmWeeklyDigest() {
+  const me = STATE.me;
+  const tasks = (STATE.tasks?.[currentCompany]) || [];
+  const mineCrm = tasks.filter(t => (t.bizDev === 'b2b' || t.bizDev === 'b2c') &&
+    (me.isLord || me.role === 'admin' || t.assignee === me.username || (t.collaborators||[]).indexOf(me.username) >= 0));
+  if (!mineCrm.length) return '';
+  const now = new Date(), dow = (now.getDay() + 6) % 7;
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+  const p = n => String(n).padStart(2, '0');
+  const monStr = mon.getFullYear() + '-' + p(mon.getMonth() + 1) + '-' + p(mon.getDate());
+  const lines = [];
+  mineCrm.forEach(t => {
+    const weekNotes = (t.notes||[]).filter(n => n.plan && localDay(n.at) >= monStr);
+    if (!weekNotes.length) return;
+    const st = STAGE_MAP[t.stage] ? STAGE_MAP[t.stage].label : '📋 名單';
+    lines.push('【' + (t.customerName || t.title || '(未命名)') + '｜' + st + (Number(t.dealValue) ? ('｜' + fmtMoney(t.dealValue)) : '') + '】');
+    weekNotes.forEach(n => lines.push('・' + localDay(n.at).slice(5) + ' ' + String(n.plan).replace(/\n+/g, ' / ')));
+  });
+  return lines.join('\n');
+}
+function insertCrmDigest() {
+  const el = document.getElementById('r-plan'), dg = document.getElementById('crmDigestText');
+  if (!el || !dg) return;
+  el.value = (el.value.trim() ? el.value.trim() + '\n\n' : '') + '——客戶開發（CRM 彙整）——\n' + dg.textContent.trim();
+  _reportDirty = true;
+  showToast('已帶入「執行計畫」欄，記得儲存週報', 'success');
 }
 function reportField(id, num, label, val, color, hint, type='area') {
   return `
