@@ -468,6 +468,34 @@
   .gantt-group-head{display:flex;align-items:center;gap:8px;padding:8px 12px;font-weight:800;font-size:13px;background:var(--gray-50);position:sticky;left:0;z-index:4;border-bottom:1px solid var(--gray-200);}
   .gantt-fbtn{padding:4px 10px;font-size:12px;border:1px solid var(--gray-200);background:var(--bg-card);color:var(--gray-500);border-radius:999px;cursor:pointer;}
   .gantt-fbtn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  /* ===== v2.20：客戶開發管線（KPI 帶／看板／通路清單） ===== */
+  .crm-kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .crm-kpi{flex:1;min-width:130px;background:var(--bg-card);border:1px solid var(--gray-200);border-radius:10px;padding:10px 14px;}
+  .crm-kpi .k{font-size:11px;color:var(--gray-500);}
+  .crm-kpi .v{font-size:17px;font-weight:800;color:var(--primary);margin-top:2px;}
+  .crm-kpi.warn .v{color:var(--accent);}
+  .crm-board{display:flex;gap:10px;overflow-x:auto;align-items:flex-start;padding-bottom:8px;}
+  .crm-col{flex:1;min-width:200px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:8px;}
+  .crm-col-head{font-weight:800;font-size:12.5px;padding:4px 6px 8px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .crm-col-sub{font-weight:600;font-size:10.5px;color:var(--gray-500);white-space:nowrap;}
+  .crm-card{background:var(--bg-card);border:1px solid var(--gray-200);border-radius:8px;padding:8px 10px;margin-bottom:8px;cursor:pointer;}
+  .crm-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+  .crm-card-cust{font-weight:800;font-size:12.5px;}
+  .crm-card-title{font-size:11.5px;color:var(--gray-600);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .crm-card-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);}
+  .crm-card-next{font-size:10.5px;color:var(--gray-600);margin-top:3px;}
+  .crm-card-next.overdue{color:var(--accent);font-weight:700;}
+  .crm-card-stale{font-size:10.5px;color:var(--accent);font-weight:700;margin-top:3px;}
+  .crm-cust-row{background:var(--bg-card);border:1px solid var(--gray-200);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+  .crm-cust-head{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;justify-content:space-between;}
+  .crm-cust-name{font-weight:800;font-size:14px;}
+  .crm-cust-meta{font-size:11.5px;color:var(--gray-500);}
+  .crm-cust-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .crm-chip{border:1.5px solid var(--gray-200);border-radius:999px;padding:3px 10px;font-size:11.5px;cursor:pointer;background:var(--bg-card);}
+  .crm-vbtn{padding:4px 10px;font-size:12px;border:1px solid var(--gray-200);background:var(--bg-card);color:var(--gray-500);border-radius:999px;cursor:pointer;}
+  .crm-vbtn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+  [data-theme="dark"] .crm-col{background:rgba(255,255,255,.04);}
+  [data-theme="dark"] .crm-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.5);}
   [data-theme="dark"] .gantt-day.weekend,[data-theme="dark"] .gantt-col.weekend{background:rgba(192,0,0,.18);}
   [data-theme="dark"] .gantt-label-col,[data-theme="dark"] .gantt-head{background:var(--bg-card);}
 
@@ -580,7 +608,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.5 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.20 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -667,7 +695,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v2.5 雲端版（客戶開發甘特圖頁面 + bizDev 分類欄位）
+// 任務卡佈告欄 ・ v2.20 雲端版（客戶開發管線：Salesforce 減肥版 CRM——客戶×階段×金額×下一步＋失單原因；看板/通路清單/甘特三視圖）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -702,6 +730,18 @@ const TASK_TYPE = {
   subtask: { label:'↳ 子任務',      color:'var(--gray-500)' },
 };
 const ADHOC_SILENT_DAYS = 3;  // 機動任務 N 天無活動 → 警示
+
+// v2.20：客戶開發階段（Salesforce 減肥版：階段×成交機率，供加權預測用）
+const STAGE_DEF = [
+  { k:'lead',     label:'📋 名單',     p:0.10 },
+  { k:'contact',  label:'📞 接觸',     p:0.30 },
+  { k:'proposal', label:'📝 提案報價', p:0.60 },
+  { k:'won',      label:'🏆 成交',     p:1.00 },
+  { k:'repeat',   label:'🔄 回購',     p:1.00 },
+];
+const STAGE_MAP = Object.fromEntries(STAGE_DEF.map(s => [s.k, s]));
+const CRM_STALE_DAYS = 7;   // 客戶開發卡 N 天無活動 → 久未跟進紅標
+function fmtMoney(n){ n = Number(n)||0; return n ? 'NT$ ' + n.toLocaleString('zh-TW') : '—'; }
 const AUTH = {
   L1: '🟢 L1 自決即報',
   L2: '🟡 L2 報備執行',
@@ -1119,7 +1159,7 @@ function renderSideNav() {
     { key:'kanban', icon:'📋', label:'任務看板' },
     { key:'report', icon:'📝', label:'週報 / 一對一' },
     { key:'pdca',   icon:'📊', label:'PDCA 儀表' },
-    { key:'gantt',  icon:'📈', label:'客戶開發甘特圖' },   // v2.5：全員可見
+    { key:'gantt',  icon:'📈', label:'客戶開發管線' },   // v2.5 全員可見；v2.20 甘特圖→管線三視圖
   );
   if (STATE.me.isLord || STATE.me.role === 'admin') {
     items.push({ key:'people', icon:'👥', label:'帳號管理' });
@@ -1508,8 +1548,9 @@ function renderGantt(m) {
   const all = (STATE.tasks?.[currentCompany]) || [];
   const items = all.filter(t => t.bizDev === 'b2b' || t.bizDev === 'b2c');
 
-  if (!window._ganttFilter) window._ganttFilter = { biz:'all', showDone:true };
+  if (!window._ganttFilter) window._ganttFilter = { biz:'all', showDone:true, view:'board' };
   const gf = window._ganttFilter;
+  if (!gf.view) gf.view = 'board';   // v2.20：board 管線看板（預設）｜list 通路清單｜gantt 甘特圖
 
   const todayStr = localDay(new Date().toISOString());
 
@@ -1533,6 +1574,26 @@ function renderGantt(m) {
   const withRange = items.map(t => Object.assign({ t }, ganttRange(t)));
   const b2bCount = items.filter(t => t.bizDev === 'b2b').length;
   const b2cCount = items.filter(t => t.bizDev === 'b2c').length;
+
+  // ── v2.20：CRM 助手（階段/久未跟進/下一步過期）──
+  const stageOf = t => STAGE_MAP[t.stage] ? t.stage : 'lead';
+  const isActive = t => t.status !== 'done' && t.status !== 'failed';
+  const lastAct = t => localDay(t.lastActivityAt || t.updatedAt || t.createdAt) || todayStr;
+  const staleDays = t => Math.max(0, diffDays(lastAct(t), todayStr));
+  const isStale = t => isActive(t) && staleDays(t) >= CRM_STALE_DAYS;
+  const nextActOverdue = t => isActive(t) && t.nextActionDate && t.nextActionDate < todayStr;
+
+  // ── v2.20：KPI（Salesforce 三數字：管線總值/加權預測/已成交；＋行為健康度）──
+  let pipeSum = 0, weightSum = 0, wonSum = 0, weekActive = 0, staleCount = 0;
+  items.forEach(t => {
+    const sk = stageOf(t), v = Number(t.dealValue) || 0;
+    if (t.status !== 'failed') {
+      if (sk === 'won' || sk === 'repeat') wonSum += v;
+      else if (isActive(t)) { pipeSum += v; weightSum += v * STAGE_MAP[sk].p; }
+    }
+    if (staleDays(t) < CRM_STALE_DAYS) weekActive++;
+    if (isStale(t)) staleCount++;
+  });
 
   // 篩選
   let shown = withRange;
@@ -1601,7 +1662,7 @@ function renderGantt(m) {
         if (t.status==='failed') barColor = 'var(--accent)';
         const opacity = t.status==='done' ? .55 : 1;
         const st = STATUS[t.status] || {};
-        const barLabel = escapeHtml(t.title || '(未命名)') + (t.status==='done' ? ' ✓' : '');
+        const barLabel = (t.customerName ? escapeHtml(t.customerName) + '｜' : '') + escapeHtml(t.title || '(未命名)') + (t.status==='done' ? ' ✓' : '');
         const deadlineTag = t.deadline ? `<span style="margin-left:auto;padding-left:8px;font-size:10px;opacity:.9;white-space:nowrap;">⏰${t.deadline.slice(5)}</span>` : '';
         const overdueBar = overdue ? `<span style="position:absolute;right:0;top:0;bottom:0;width:4px;background:var(--accent);border-radius:0 6px 6px 0;"></span>` : '';
         let midMark = '';
@@ -1633,19 +1694,68 @@ function renderGantt(m) {
   if (gf.biz !== 'b2b') groupsHtml += groupHtml('b2c', '🛒 B2C 通路');
 
   const fbtn = (val,txt) => `<button class="gantt-fbtn ${gf.biz===val?'active':''}" data-gbiz="${val}">${txt}</button>`;
+  const vbtn = (val,txt) => `<button class="crm-vbtn ${gf.view===val?'active':''}" data-gview="${val}">${txt}</button>`;
+  const shownTasks = shown.map(x => x.t);
 
-  m.innerHTML = `
-    <div class="page-header">
-      <h2 class="page-title">📈 客戶開發甘特圖</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ 🤝 B2B ${b2bCount} 件 ・ 🛒 B2C ${b2cCount} 件</p>
-      <div class="page-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        ${fbtn('all','全部')}${fbtn('b2b','只看 B2B')}${fbtn('b2c','只看 B2C')}
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-left:6px;">
-          <input type="checkbox" id="gantt-showdone" ${gf.showDone?'checked':''}> 顯示已完成
-        </label>
-      </div>
-    </div>
-    <div class="gantt-wrap" id="ganttWrap">
+  // v2.20：空狀態＝行動起點（一鍵建卡，不再叫使用者自己繞路）
+  const emptyHtml = `
+    <div style="padding:28px;text-align:center;color:var(--gray-500);font-size:13px;background:var(--bg-card);border:1px dashed var(--gray-200);border-radius:10px;">
+      尚無客戶開發任務，30 秒建第一張：<br><br>
+      <button class="btn btn-primary" onclick="newBizDevTask('b2b')">🤝 ＋新增 B2B 客戶開發</button>
+      <button class="btn btn-primary" style="background:var(--orange);border-color:var(--orange);margin-left:8px;" onclick="newBizDevTask('b2c')">🛒 ＋新增 B2C 通路</button>
+    </div>`;
+
+  // v2.20：管線看板（Salesforce 減肥版——五階段直欄，欄頭帶件數與金額加總）
+  function boardHtml(list){
+    const cols = STAGE_DEF.map(s => {
+      const cards = list.filter(t => stageOf(t) === s.k);
+      const sum = cards.reduce((a,t) => a + (Number(t.dealValue)||0), 0);
+      const cardsHtml = cards.map(t => {
+        const b2b = t.bizDev === 'b2b';
+        const nOver = nextActOverdue(t);
+        return `
+        <div class="crm-card" data-gantt-task="${escapeHtml(t.id)}" style="border-left:4px solid ${b2b?'var(--primary)':'var(--orange)'};">
+          <div class="crm-card-cust">${t.customerName ? escapeHtml(t.customerName) : '<span style="color:var(--gray-400);font-weight:400;">（未填客戶名）</span>'} ${b2b?'🤝':'🛒'}</div>
+          <div class="crm-card-title">${escapeHtml(t.title||'(未命名)')}</div>
+          <div class="crm-card-meta"><span>${fmtMoney(t.dealValue)}</span><span>${escapeHtml(t.assignee||'未指派')}</span></div>
+          ${t.nextActionDate ? `<div class="crm-card-next ${nOver?'overdue':''}">📅 下一步 ${t.nextActionDate.slice(5)}${nOver?'（已過期）':''}</div>` : ''}
+          ${isStale(t) ? `<div class="crm-card-stale">🔴 ${staleDays(t)} 天沒動靜</div>` : ''}
+          ${t.status==='done' ? '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:3px;">✅ 任務完成</div>'
+            : t.status==='failed' ? `<div style="font-size:10px;color:var(--accent);font-weight:700;margin-top:3px;">❌ 失單${t.lostReason?'：'+escapeHtml(t.lostReason):''}</div>` : ''}
+        </div>`;
+      }).join('') || '<div style="padding:10px;font-size:11px;color:var(--gray-400);text-align:center;">－</div>';
+      return `<div class="crm-col"><div class="crm-col-head">${s.label}<span class="crm-col-sub">${cards.length} 件 ・ ${fmtMoney(sum)}</span></div>${cardsHtml}</div>`;
+    }).join('');
+    return `<div class="crm-board">${cols}</div>`;
+  }
+
+  // v2.20：通路清單（客戶層視圖——同客戶多筆生意彙總；Salesforce「Account」精神）
+  function listHtml(list){
+    const groups = {};
+    list.forEach(t => { const k = t.customerName || '（未填客戶名）'; (groups[k] = groups[k] || []).push(t); });
+    const keys = Object.keys(groups).sort((a,b) => a.localeCompare(b,'zh-Hant'));
+    return keys.map(k => {
+      const ts = groups[k];
+      const bestIdx = Math.max.apply(null, ts.map(t => STAGE_DEF.findIndex(s => s.k === stageOf(t))));
+      const best = STAGE_DEF[bestIdx] || STAGE_DEF[0];
+      const sum = ts.reduce((a,t) => a + (Number(t.dealValue)||0), 0);
+      const latest = ts.map(lastAct).sort().pop() || '';
+      const anyStale = ts.some(isStale);
+      const chips = ts.map(t => `<span class="crm-chip" data-gantt-task="${escapeHtml(t.id)}" style="border-color:${t.bizDev==='b2b'?'var(--primary)':'var(--orange)'};">${(STAGE_MAP[stageOf(t)]||{}).label||''}｜${escapeHtml(t.title||'(未命名)')}${t.status==='done'?' ✅':t.status==='failed'?' ❌':''}</span>`).join('');
+      return `
+      <div class="crm-cust-row">
+        <div class="crm-cust-head">
+          <span class="crm-cust-name">${escapeHtml(k)}</span>
+          <span class="crm-cust-meta">最高階段 ${best.label} ・ ${ts.length} 筆生意 ・ ${fmtMoney(sum)} ・ 最近動靜 ${latest}${anyStale?' <b style="color:var(--accent);">🔴 久未跟進</b>':''}</span>
+        </div>
+        <div class="crm-cust-chips">${chips}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // v2.20：甘特視圖（原 v2.5 引擎原封沿用，降級為第三視圖）
+  const ganttHtml = `
+    <div class="gantt-wrap">
       <div class="gantt-head">
         <div style="display:flex;">
           <div class="gantt-label-col" style="height:38px;"></div>
@@ -1655,25 +1765,59 @@ function renderGantt(m) {
           </div>
         </div>
       </div>
-      ${items.length ? groupsHtml : '<div style="padding:24px;color:var(--gray-500);font-size:13px;text-align:center;">尚無任何客戶開發任務。請到任務卡，把任務標記為「🤝 B2B 客戶開發」或「🛒 B2C 通路」。</div>'}
+      ${groupsHtml}
+    </div>`;
+
+  const kpi = (k,v,warn) => `<div class="crm-kpi ${warn?'warn':''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const content = !items.length ? emptyHtml
+    : gf.view === 'board' ? boardHtml(shownTasks)
+    : gf.view === 'list'  ? (listHtml(shownTasks) || emptyHtml)
+    : ganttHtml;
+
+  m.innerHTML = `
+    <div class="page-header">
+      <h2 class="page-title">📈 客戶開發管線</h2>
+      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ 🤝 B2B ${b2bCount} 件 ・ 🛒 B2C ${b2cCount} 件</p>
+      <div class="page-actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        ${vbtn('board','📊 管線看板')}${vbtn('list','🏪 通路清單')}${vbtn('gantt','📈 甘特圖')}
+        <span style="width:1px;height:18px;background:var(--gray-200);margin:0 4px;"></span>
+        ${fbtn('all','全部')}${fbtn('b2b','只看 B2B')}${fbtn('b2c','只看 B2C')}
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;margin-left:6px;">
+          <input type="checkbox" id="gantt-showdone" ${gf.showDone?'checked':''}> 顯示已完成
+        </label>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="newBizDevTask('b2b')">🤝 ＋B2B</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="newBizDevTask('b2c')">🛒 ＋B2C</button>
+      </div>
     </div>
+    <div class="crm-kpis">
+      ${kpi('💼 管線總值（未成交）', fmtMoney(pipeSum))}
+      ${kpi('⚖️ 加權預測', fmtMoney(Math.round(weightSum)))}
+      ${kpi('🏆 已成交/回購', fmtMoney(wonSum))}
+      ${kpi('🔥 本週有動靜', weekActive + ' / ' + items.length + ' 件')}
+      ${kpi('🔴 久未跟進（≥' + CRM_STALE_DAYS + '天）', staleCount + ' 件', staleCount > 0)}
+    </div>
+    <div id="ganttWrap">${content}</div>
   `;
 
-  // 篩選互動
+  // 篩選/視圖互動
   m.querySelectorAll('.gantt-fbtn').forEach(b => b.addEventListener('click', () => { gf.biz = b.dataset.gbiz; renderGantt(m); }));
+  m.querySelectorAll('.crm-vbtn').forEach(b => b.addEventListener('click', () => { gf.view = b.dataset.gview; renderGantt(m); }));
   const sd = m.querySelector('#gantt-showdone');
   if (sd) sd.addEventListener('change', () => { gf.showDone = sd.checked; renderGantt(m); });
 
-  // 事件代理：點整列／bar → 開既有任務 Modal
+  // 事件代理：點卡片／膠囊／甘特列 → 開既有任務 Modal
   const wrap = m.querySelector('#ganttWrap');
   wrap.addEventListener('click', e => {
     const row = e.target.closest('[data-gantt-task]');
     if (row) openTaskModal(row.dataset.ganttTask);
   });
 
-  // 初次定位捲軸到「今天」前 5 天
-  const todayIdx = diffDays(axisStart, todayStr);
-  if (todayIdx >= 0) requestAnimationFrame(() => { wrap.scrollLeft = Math.max(0, (todayIdx - 5) * DAY_W); });
+  // 甘特視圖：初次定位捲軸到「今天」前 5 天
+  if (gf.view === 'gantt') {
+    const scroller = m.querySelector('.gantt-wrap');
+    const todayIdx = diffDays(axisStart, todayStr);
+    if (scroller && todayIdx >= 0) requestAnimationFrame(() => { scroller.scrollLeft = Math.max(0, (todayIdx - 5) * DAY_W); });
+  }
 }
 
 function taskCard(t) {
@@ -2320,11 +2464,14 @@ function openTaskModal(id) {
     complexity: 0, techDifficulty: 0, bonusPoints: 0, bonusReason: '',
     parentTaskId: '', isParent: false, projectKPI: '',
     taskType: 'normal', attachments: [], statusHistory: [],
-    bizDev: '',          // v2.5：客戶開發分類 '' | 'b2b' | 'b2c'
+    bizDev: window._presetBizDev || '',   // v2.5：客戶開發分類 '' | 'b2b' | 'b2c'（v2.20：可由客戶開發頁一鍵預設）
+    customerName:'', stage:'lead', dealValue:'', nextActionDate:'', lostReason:'',   // v2.20：CRM 減肥版四欄+失單原因
     collaborators: [],
     company: currentCompany,
     createdAt:'', notes:[]
   };
+  window._presetBizDev = '';   // v2.20：預設值一次性消耗
+
   const canScore = me.isLord || me.role === 'admin';
   const canCreateParent = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
   // v1.9：staff 不能改 assignee/deadline/midCheck（這些欄位由 admin/lord 訂）
@@ -2442,14 +2589,51 @@ function openTaskModal(id) {
         <label class="field-label">客戶開發分類 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">（選了才會進甘特圖）</span></label>
         <div style="display:flex;gap:8px;">
           <label style="flex:1;cursor:pointer;border:1.5px solid ${(!data.bizDev)?'var(--primary)':'var(--gray-200)'};background:${(!data.bizDev)?'var(--primary-light)':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
-            <input type="radio" name="f-bizDev" value="" ${(!data.bizDev)?'checked':''}> ⚪ 無
+            <input type="radio" name="f-bizDev" value="" ${(!data.bizDev)?'checked':''} onchange="toggleCrmFields('')"> ⚪ 無
           </label>
           <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2b'?'#1F4E79':'var(--gray-200)'};background:${data.bizDev==='b2b'?'#D9E2F3':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
-            <input type="radio" name="f-bizDev" value="b2b" ${data.bizDev==='b2b'?'checked':''}> 🤝 B2B 客戶開發
+            <input type="radio" name="f-bizDev" value="b2b" ${data.bizDev==='b2b'?'checked':''} onchange="toggleCrmFields('b2b')"> 🤝 B2B 客戶開發
           </label>
           <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2c'?'#C65911':'var(--gray-200)'};background:${data.bizDev==='b2c'?'#FBE5D6':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
-            <input type="radio" name="f-bizDev" value="b2c" ${data.bizDev==='b2c'?'checked':''}> 🛒 B2C 通路
+            <input type="radio" name="f-bizDev" value="b2c" ${data.bizDev==='b2c'?'checked':''} onchange="toggleCrmFields('b2c')"> 🛒 B2C 通路
           </label>
+        </div>
+      </div>
+
+      <!-- v2.20：客戶開發 CRM 減肥版欄位（Salesforce 骨架：客戶×階段×金額×下一步；僅 bizDev 標記時顯示） -->
+      <div id="crm-fields" style="display:${data.bizDev?'block':'none'};border:1.5px dashed var(--primary-light);border-radius:10px;padding:12px;margin-bottom:14px;background:var(--gray-50);">
+        <div style="font-weight:700;font-size:12.5px;color:var(--primary);margin-bottom:8px;">💼 客戶開發情報（30 秒填完）</div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">🏢 客戶／通路名 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">同客戶可開多張卡＝多筆生意</span></label>
+            <input class="field-input" id="f-customerName" list="crm-customer-list" value="${escapeHtml(data.customerName||'')}" placeholder="例：全聯、家樂福、某餐酒館">
+            <datalist id="crm-customer-list">
+              ${Array.from(new Set(allTasks.filter(x=>x.customerName).map(x=>x.customerName))).map(n=>`<option value="${escapeHtml(n)}">`).join('')}
+            </datalist>
+          </div>
+          <div class="field">
+            <label class="field-label">📶 階段</label>
+            <select class="field-select" id="f-stage">
+              ${STAGE_DEF.map(s => `<option value="${s.k}" ${(data.stage||'lead')===s.k?'selected':''}>${s.label}（成交率 ${Math.round(s.p*100)}%）</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">💰 預估金額（NT$）</label>
+            <input class="field-input" type="number" min="0" step="1000" id="f-dealValue" value="${escapeHtml(String(data.dealValue||''))}" placeholder="這筆生意值多少">
+          </div>
+          <div class="field">
+            <label class="field-label">📅 下次行動日 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">過期會亮紅燈</span></label>
+            <input class="field-input" type="date" id="f-nextActionDate" value="${data.nextActionDate||''}">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">🥀 失單原因 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">僅狀態改為 ❌ Failed 時填，累積敗戰情報</span></label>
+          <select class="field-select" id="f-lostReason">
+            <option value="" ${!data.lostReason?'selected':''}>（未失單／不適用）</option>
+            ${['價格太高','被競品搶走','時機不對','需求消失','其他'].map(r=>`<option value="${r}" ${data.lostReason===r?'selected':''}>${r}</option>`).join('')}
+          </select>
         </div>
       </div>
 
@@ -2713,6 +2897,14 @@ async function saveTask(id) {
   // v2.5：客戶開發分類
   const bd = document.querySelector('input[name="f-bizDev"]:checked');
   task.bizDev = bd ? bd.value : '';
+  // v2.20：CRM 減肥版欄位（僅在有 bizDev 時有意義，但一律回存以保留歷史值）
+  if (document.getElementById('f-customerName')) {
+    task.customerName   = get('f-customerName');
+    task.stage          = get('f-stage') || 'lead';
+    task.dealValue      = Number(get('f-dealValue')) || 0;
+    task.nextActionDate = get('f-nextActionDate');
+    task.lostReason     = get('f-lostReason');
+  }
   // v1.7：協作人員
   task.collaborators = Array.from(document.querySelectorAll('input[name="f-collaborator"]:checked')).map(c => c.value);
   // 父任務 / 子任務的 type 由後端自動推斷，前端無需強制
@@ -3179,6 +3371,16 @@ function renderTaskTimeline(task) {
 }
 
 // v2.2：切換任務層級 radio 時，動態顯示對應子表單
+// v2.20：客戶開發分類切換 → 顯示/隱藏 CRM 欄位區
+function toggleCrmFields(v) {
+  const box = document.getElementById('crm-fields');
+  if (box) box.style.display = v ? 'block' : 'none';
+}
+// v2.20：客戶開發頁一鍵新增（預設分類）
+function newBizDevTask(biz) {
+  window._presetBizDev = biz;
+  openTaskModal();
+}
 function toggleTaskRel(rel) {
   const pFields = document.getElementById('rel-parent-fields');
   const cFields = document.getElementById('rel-child-fields');
