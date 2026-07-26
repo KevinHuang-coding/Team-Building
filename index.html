@@ -608,7 +608,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.20 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.20.1 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -755,6 +755,8 @@ const LS_TOKEN  = 'cmdroom_token';
 const LS_CACHE  = 'cmdroom_cache';   // 離線快取的 STATE
 const LS_LOGIN  = 'cmdroom_lastlogin'; // {company, username}
 const LS_THEME  = 'cmdroom_theme';      // v1.6: 'dark' | 'light'
+const LS_COMPANY = 'cmdroom_lastcompany'; // v2.20.1：跨公司使用者記住上次公司；預設 npw（主公拍板：目前主力=南坡萬）
+function preferredCompany(){ const c = localStorage.getItem(LS_COMPANY); return ['fb','mw','npw'].indexOf(c) >= 0 ? c : 'npw'; }
 
 // v1.6：套用主題
 function applyTheme(theme) {
@@ -845,7 +847,7 @@ async function boot() {
     try {
       STATE = await api('getInitData');
       cacheState();
-      currentCompany = STATE.me.isLord ? 'fb' : STATE.me.company;
+      currentCompany = STATE.me.isLord ? preferredCompany() : STATE.me.company;   // v2.20.1：lord 落上次公司（預設南坡萬）
       enterApp();
       return;
     } catch (e) {
@@ -1039,7 +1041,7 @@ async function tryPinLogin() {
       TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
       localStorage.removeItem(LS_LOGIN);
       STATE = await api('getInitData'); cacheState();
-      currentCompany = 'fb';
+      currentCompany = preferredCompany();   // v2.20.1：lord 登入落上次公司（預設南坡萬）
       document.getElementById('login').classList.add('hidden');
       hidePinPad();
       enterApp();
@@ -1124,6 +1126,7 @@ async function onCompanySwitchChange(e) {
       TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
       STATE = await api('getInitData'); cacheState();
       currentCompany = target;
+      localStorage.setItem(LS_COMPANY, target);   // v2.20.1：記住切換
       renderSideNav();
       renderTopCompany();
       go(currentPage);
@@ -1141,6 +1144,7 @@ async function onCompanySwitchChange(e) {
     TOKEN = r.token; localStorage.setItem(LS_TOKEN, TOKEN);
     STATE = await api('getInitData'); cacheState();
     currentCompany = r.user.company;
+    localStorage.setItem(LS_COMPANY, currentCompany);   // v2.20.1：記住切換
     renderSideNav();
     renderTopCompany();
     document.getElementById('topUser').textContent =
