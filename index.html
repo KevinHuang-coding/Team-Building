@@ -616,7 +616,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.21 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.21.1 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -2558,6 +2558,7 @@ function openTaskModal(id) {
         <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="動詞開頭，一句話講清楚要做什麼">
       </div>
 
+      <div class="noncrm-field" ${data.bizDev?'style="display:none;"':''}>${''/* v2.21.1：客戶開發卡減肥——bizDev 卡隱藏與開發無關欄位，值照存不丟 */}
       ${(() => {
         const lockedParent = hasChildren;  // 已有子任務 → 強制鎖在「父任務」
         const lockedChild  = isChildTask;  // 已被掛在父下 → 強制鎖在「子任務」
@@ -2613,6 +2614,7 @@ function openTaskModal(id) {
       ${(!isChildTask && !hasChildren) ? `
         <div class="field">
           <label class="field-label">任務類型</label>
+          <!-- v2.21.1：此區塊仍在 noncrm-field 容器內，CRM 卡自動隱藏 -->
           <div style="display:flex;gap:8px;">
             <label style="flex:1;cursor:pointer;border:1.5px solid ${data.taskType!=='adhoc'?'var(--primary)':'var(--gray-200)'};background:${data.taskType!=='adhoc'?'var(--primary-light)':'white'};border-radius:8px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;">
               <input type="radio" name="f-taskType" value="normal" ${data.taskType!=='adhoc'?'checked':''}> 📌 一般任務 <span style="font-size:10px;color:var(--gray-500);">（規劃性、有明確 deadline）</span>
@@ -2624,6 +2626,7 @@ function openTaskModal(id) {
           <div class="field-hint">機動任務在 ${ADHOC_SILENT_DAYS} 天無活動會自動發出警示，避免被遺忘</div>
         </div>
       ` : ''}
+      </div><!-- /noncrm-field（任務層級＋任務類型） -->
 
       <!-- v2.5：客戶開發分類（選了才會進甘特圖；父/子/一般任務皆可標） -->
       <div class="field">
@@ -2676,6 +2679,9 @@ function openTaskModal(id) {
             ${['價格太高','被競品搶走','時機不對','需求消失','其他'].map(r=>`<option value="${r}" ${data.lostReason===r?'selected':''}>${r}</option>`).join('')}
           </select>
         </div>
+        <div style="text-align:right;margin-top:8px;">
+          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:3px 10px;color:var(--gray-500);" onclick="document.querySelectorAll('.noncrm-field').forEach(el=>el.style.display='');this.style.display='none';">⚙️ 顯示完整任務欄位（層級/截止日/紅線…）</button>
+        </div>
       </div>
 
       <!-- v2.2：舊「專案 KPI」獨立區塊已整合到上方「② 任務層級」radio 下 -->
@@ -2696,19 +2702,19 @@ function openTaskModal(id) {
           <div class="field-hint">子任務全部 ✅ 完成時、本父任務會自動推進為「完成」狀態</div>
         </div>
       ` : ''}
-      <div class="field">
+      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <label class="field-label">② 為什麼（這件事服務的更大目標）</label>
         <textarea class="field-textarea" id="f-why" placeholder="讓接手者知道方向，遇到變化能自己取捨">${escapeHtml(data.why)}</textarea>
       </div>
-      <div class="field">
+      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <label class="field-label">③ 完成長什麼樣子（可驗收）</label>
         <textarea class="field-textarea" id="f-done" placeholder="可拍照、可數字、可勾選的具體樣貌">${escapeHtml(data.doneLook)}</textarea>
       </div>
-      <div class="field">
+      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <label class="field-label">④ 紅線（不能跨過的底線）</label>
         <textarea class="field-textarea" id="f-red" placeholder="預算、時程、品質、品牌、合作關係…">${escapeHtml(data.redLines)}</textarea>
       </div>
-      <div class="field-row">
+      <div class="field-row noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <div class="field">
           <label class="field-label">⑤ 截止日${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
           <input class="field-input" type="date" id="f-deadline" value="${data.deadline||''}" ${lockedByStaff}>
@@ -2726,20 +2732,20 @@ function openTaskModal(id) {
             ${userList.map(u => `<option value="${escapeHtml(u)}" ${(isStaffUser?(u===me.username):(data.assignee===u))?'selected':''}>${escapeHtml(u)}</option>`).join('')}
           </select>
         </div>
-        <div class="field">
+        <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
           <label class="field-label">優先級</label>
           <select class="field-select" id="f-priority">
             ${Object.entries(PRIORITY).map(([k,v]) => `<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
-        <div class="field">
+        <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
           <label class="field-label">授權等級</label>
           <select class="field-select" id="f-auth">
             ${Object.entries(AUTH).map(([k,v]) => `<option value="${k}" ${data.authLevel===k?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
       </div>
-      <div class="field">
+      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <label class="field-label">🤝 協作人員（可複選，與主負責人共扛責任）</label>
         <div id="collabChips" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--gray-50);border-radius:8px;min-height:40px;">
           ${userList.filter(u => u !== data.assignee).map(u => {
@@ -3451,9 +3457,11 @@ function renderTaskTimeline(task) {
 
 // v2.2：切換任務層級 radio 時，動態顯示對應子表單
 // v2.20：客戶開發分類切換 → 顯示/隱藏 CRM 欄位區
+// v2.21.1：同步減肥——CRM 卡隱藏無關欄位（隱藏≠清空，值照存）
 function toggleCrmFields(v) {
   const box = document.getElementById('crm-fields');
   if (box) box.style.display = v ? 'block' : 'none';
+  document.querySelectorAll('.noncrm-field').forEach(el => { el.style.display = v ? 'none' : ''; });
 }
 // v2.20：客戶開發頁一鍵新增（預設分類）
 function newBizDevTask(biz) {
