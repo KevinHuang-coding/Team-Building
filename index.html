@@ -522,16 +522,16 @@
   [data-theme="dark"] .goal-date-input{color:#F1F5F9;}
   [data-theme="dark"] .goal-date-input::-webkit-calendar-picker-indicator{filter:invert(1);}
   [data-theme="dark"] .goal-mini-today{background:var(--bg-card);color:var(--gray-500);}
-  /* v2.9：每日目標三欄並排（明天/今天/昨天） */
-  .goal-day-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-  .goal-day-col{border:1px solid var(--gray-200);border-radius:10px;padding:8px 10px;background:var(--gray-50);min-width:0;}
-  .goal-day-col-head{font-size:13px;font-weight:700;color:var(--primary);padding:2px 2px 8px;border-bottom:1px dashed var(--gray-200);margin-bottom:8px;}
-  .goal-day-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;padding:8px 10px;margin-bottom:8px;}
-  .goal-day-col .goal-co-name{width:100%;padding-top:0;font-size:13px;}
-  .goal-day-col .goal-rows{width:100%;}
-  .goal-day-col .goal-row{flex-wrap:wrap;}
-  .goal-day-col .goal-input{flex:1 1 120px;min-width:90px;}
-  .goal-day-col .goal-emp-select{width:88px;}
+  /* v2.9→v2.19：週期目標三欄並排（day/week/month 共用；時間順 上→本→下） */
+  .goal-col-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+  .goal-col{border:1px solid var(--gray-200);border-radius:10px;padding:8px 10px;background:var(--gray-50);min-width:0;}
+  .goal-col-head{font-size:13px;font-weight:700;color:var(--primary);padding:2px 2px 8px;border-bottom:1px dashed var(--gray-200);margin-bottom:8px;}
+  .goal-col .goal-co-block{flex-direction:column;align-items:stretch;gap:5px;padding:8px 10px;margin-bottom:8px;}
+  .goal-col .goal-co-name{width:100%;padding-top:0;font-size:13px;}
+  .goal-col .goal-rows{width:100%;}
+  .goal-col .goal-row{flex-wrap:wrap;}
+  .goal-col .goal-input{flex:1 1 120px;min-width:90px;}
+  .goal-col .goal-emp-select{width:88px;}
   /* v2.14：每日目標兩列排版（輸入框獨佔第 1 列吃滿整行；下拉/🔗/− 移到第 2 列） */
   .goal-row-day{flex-direction:column;align-items:stretch;gap:6px;}
   .goal-row-day .gr-line{display:flex;align-items:center;gap:8px;}
@@ -539,8 +539,8 @@
   .goal-row-day .gr-line2{padding-left:26px;}   /* 對齊輸入框左緣（越過圓點 18px+gap 8px） */
   .goal-row-day .gr-line2 .goal-btn-del{margin-left:auto;}   /* − 靠右 */
   .goal-row-day .goal-emp-select{width:120px;}   /* 自成一列、可略寬，較好讀 */
-  @media (max-width:1100px){ .goal-day-grid{grid-template-columns:1fr;} }
-  [data-theme="dark"] .goal-day-col{background:var(--bg-card);}
+  @media (max-width:1100px){ .goal-col-grid{grid-template-columns:1fr;} }
+  [data-theme="dark"] .goal-col{background:var(--bg-card);}
   /* 連動掛任務卡 Modal 候選列 */
   .goal-cand{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:9px;margin-bottom:8px;}
   .goal-cand.suggest{border-color:var(--primary);background:var(--primary-light);}
@@ -1927,14 +1927,77 @@ function dayColHeadHtml(dayKey) {
   const rel = dayRelLabel(dayKey);
   return `${rel ? '<b>' + rel + '</b> ' : ''}${dayKey.slice(5).replace('-', '/')}（${weekdayTW(dayKey)}）`;
 }
-// v2.9：每日目標三欄並排（左=隔天/明天、中=錨定日/今天、右=前一天/昨天）；各欄各自一個 dayKey bucket
+// v2.9→v2.19：每日目標三欄並排。v2.19 主公拍板「時間順、左=過去→右=未來」：昨天 ｜ 今天 ｜ 明天
 function renderDayColumns(anchorKey) {
-  const cols = [dayKeyShift(anchorKey, 1), anchorKey, dayKeyShift(anchorKey, -1)];
-  return `<div class="goal-day-grid">
+  const cols = [dayKeyShift(anchorKey, -1), anchorKey, dayKeyShift(anchorKey, 1)];
+  return `<div class="goal-col-grid">
     ${cols.map(dk => `
-      <div class="goal-day-col">
-        <div class="goal-day-col-head">${dayColHeadHtml(dk)}</div>
+      <div class="goal-col">
+        <div class="goal-col-head">${dayColHeadHtml(dk)}</div>
         ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, 'day', dk)).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+// v2.19：週目標三欄（上週 ｜ 本週 ｜ 下週）——後端零改動，各欄自帶 data-periodkey（同 day 機制）
+function weekKeyShift(weekKey, delta) {
+  const mon = isoWeekMonday(weekKey);
+  if (!mon) return weekKey;
+  mon.setUTCDate(mon.getUTCDate() + delta * 7);
+  // 由該週一反推 ISO 週鍵（Thursday-based，與 currentWeekId 同法）
+  const d = new Date(mon);
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const wk = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(wk).padStart(2, '0');
+}
+function weekRelLabel(weekKey) {
+  const a = isoWeekMonday(weekKey), b = isoWeekMonday(currentWeekId());
+  if (!a || !b) return '';
+  const diff = Math.round((a - b) / (7 * 86400000));
+  return ({ '1':'下週', '0':'本週', '-1':'上週' })[String(diff)] || '';
+}
+function weekColHeadHtml(weekKey) {
+  const rel = weekRelLabel(weekKey);
+  return `${rel ? '<b>' + rel + '</b> ' : ''}${weekKey}（${weekRangeLabelFromKey(weekKey)}）`;
+}
+function renderWeekColumns(anchorKey) {
+  const cols = [weekKeyShift(anchorKey, -1), anchorKey, weekKeyShift(anchorKey, 1)];
+  return `<div class="goal-col-grid">
+    ${cols.map(wk => `
+      <div class="goal-col">
+        <div class="goal-col-head">${weekColHeadHtml(wk)}</div>
+        ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, 'week', wk)).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+// v2.19：月目標三欄（上月 ｜ 本月 ｜ 下月）
+function monthKeyShift(monthKey, delta) {
+  const m = String(monthKey).match(/(\d{4})-(\d{2})/);
+  if (!m) return monthKey;
+  let y = +m[1], mo = +m[2] - 1 + delta;   // 0-based 月
+  y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12;
+  return y + '-' + String(mo + 1).padStart(2, '0');
+}
+function monthRelLabel(monthKey) {
+  const now = localDay(new Date()).slice(0, 7);
+  const toIdx = k => { const a = String(k).split('-').map(Number); return a[0] * 12 + (a[1] - 1); };
+  const diff = toIdx(monthKey) - toIdx(now);
+  return ({ '1':'下月', '0':'本月', '-1':'上月' })[String(diff)] || '';
+}
+function monthColHeadHtml(monthKey) {
+  const rel = monthRelLabel(monthKey);
+  return `${rel ? '<b>' + rel + '</b> ' : ''}${monthKey}`;
+}
+function renderMonthColumns(anchorKey) {
+  const cols = [monthKeyShift(anchorKey, -1), anchorKey, monthKeyShift(anchorKey, 1)];
+  return `<div class="goal-col-grid">
+    ${cols.map(mk => `
+      <div class="goal-col">
+        <div class="goal-col-head">${monthColHeadHtml(mk)}</div>
+        ${GOAL_COMPANIES.map(co => goalCompanyBlock(co, 'month', mk)).join('')}
       </div>`).join('')}
   </div>`;
 }
@@ -1946,9 +2009,16 @@ function renderPeriodCard(period) {
   const key = periodKeyOf(period);
   const meta = GOAL_PERIOD_META[period];
   const cur = isPeriodCurrent(period);
-  const headPk = period === 'day' ? '明天 ｜ 今天 ｜ 昨天 比對' : escapeHtml(periodPkLabel(period, key));
-  const body = period === 'day'
-    ? renderDayColumns(key)
+  // v2.19：三期都走三欄比對（時間順，過去在左）
+  const headPk =
+      period === 'day'   ? '昨天 ｜ 今天 ｜ 明天 比對'
+    : period === 'week'  ? '上週 ｜ 本週 ｜ 下週 比對'
+    : period === 'month' ? '上月 ｜ 本月 ｜ 下月 比對'
+    : escapeHtml(periodPkLabel(period, key));
+  const body =
+      period === 'day'   ? renderDayColumns(key)
+    : period === 'week'  ? renderWeekColumns(key)
+    : period === 'month' ? renderMonthColumns(key)
     : GOAL_COMPANIES.map(co => goalCompanyBlock(co, period, key)).join('');
   el.innerHTML = `
     <div class="goal-period-head">
