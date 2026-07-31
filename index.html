@@ -530,7 +530,11 @@
   .goals-save-status.err{color:var(--accent);}
   .goal-co-name .co-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
   .goal-rows{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
-  .goal-row{display:flex;align-items:center;gap:8px;}
+  .goal-row{display:flex;align-items:flex-start;gap:8px;}   /* v2.21.2：多行目標頂對齊 */
+  .goal-row .goal-done-dot{margin-top:8px;}
+  .goal-row .goal-btn-del{margin-top:4px;}
+  /* v2.21.2：目標欄位自動換行長高（field-sizing 原生 + oninput JS 雙保險） */
+  .goal-input-ta{resize:none;overflow:hidden;line-height:1.55;field-sizing:content;min-height:34px;display:block;white-space:pre-wrap;word-break:break-word;}
   .goal-done-dot{width:18px;height:18px;flex:none;border-radius:50%;border:2px solid var(--primary);background:transparent;cursor:pointer;transition:.15s;position:relative;padding:0;}
   .goal-done-dot.done{background:var(--primary);}
   .goal-done-dot.done::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;}
@@ -616,7 +620,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.21.1 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.21.2 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -2256,7 +2260,8 @@ function goalRowHtml(company, period, g) {
   const done = String(g.done) === '1' || g.done === true;
   const linked = g.linkedTaskId ? findTaskById(company, g.linkedTaskId) : null;
   const dotHtml = `<button type="button" class="goal-done-dot ${done ? 'done' : ''}" title="標記完成 / 取消" onclick="toggleGoalDone(this)"></button>`;
-  const inputHtml = `<input class="goal-input" data-k="content" value="${escapeHtml(g.content || '')}" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this);scheduleGoalsAutoSave()" onblur="scheduleGoalsAutoSave()">`;
+  // v2.21.2：input→textarea 自動換行長高（一眼看完整敘述）；.value 讀寫介面不變
+  const inputHtml = `<textarea class="goal-input goal-input-ta" data-k="content" rows="1" placeholder="請 key 目標內容…" oninput="markGoalsDirty(this);scheduleGoalsAutoSave();autoGrowGoal(this)" onblur="scheduleGoalsAutoSave()">${escapeHtml(g.content || '')}</textarea>`;
   const delHtml = `<button type="button" class="goal-btn-del" title="刪除此列" onclick="delGoalRow(this)">−</button>`;
   // v2.14：每日目標改兩列——第 1 列 圓點+輸入框(吃滿整行)；第 2 列 員工下拉+🔗+−
   if (period === 'day') {
@@ -2274,6 +2279,8 @@ function goalRowHtml(company, period, g) {
     </div>`;
 }
 
+// v2.21.2：textarea 自動長高（不支援 field-sizing 的瀏覽器靠這個）
+function autoGrowGoal(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 function toggleGoalDone(btn) {
   btn.classList.toggle('done');
   btn.closest('.goal-row').classList.toggle('done');
