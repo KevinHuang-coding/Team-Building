@@ -620,7 +620,7 @@
 <div id="login" class="center-wrap hidden">
   <div class="center-card">
     <h1 class="center-title">任務卡佈告欄</h1>
-    <p class="center-sub">Three-Company Hub ・ v2.21.2 雲端版</p>
+    <p class="center-sub">Three-Company Hub ・ v2.22 雲端版</p>
 
     <div class="company-tabs">
       <button class="company-tab active" data-company="fb">Feeling Bar</button>
@@ -707,7 +707,7 @@
 
 <script>
 //=========================================================================
-// 任務卡佈告欄 ・ v2.20 雲端版（客戶開發管線：Salesforce 減肥版 CRM——客戶×階段×金額×下一步＋失單原因；看板/通路清單/甘特三視圖）
+// 任務卡佈告欄 ・ v2.22 雲端版（減負版：刪 5 欄減部屬記憶體佔用＋新卡預設父任務＋midCheck 自動取中點＋冷開機每日警示＋cooRead 修復）
 // Backend: Google Apps Script + Google Sheet
 // Frontend: 本檔案（單檔 HTML，呼叫 GAS API）
 //=========================================================================
@@ -741,7 +741,23 @@ const TASK_TYPE = {
   project: { label:'📦 專案父任務', color:'var(--primary)' },
   subtask: { label:'↳ 子任務',      color:'var(--gray-500)' },
 };
-const ADHOC_SILENT_DAYS = 3;  // 機動任務 N 天無活動 → 警示
+const ADHOC_SILENT_DAYS = 3;  // 機動任務 N 天無活動 → 警示（既有 adhoc 卡顯示邏輯仍用它）
+const SUBTASK_SILENT_DAYS = 3;  // v2.22：子任務 N 天無進度回報 → 冷開機警示
+
+// v2.22：兩個 YYYY-MM-DD 字串的日數差（b - a），純 UTC 數學不碰時區（坑 1/坑 13）
+function daysBetween(a, b) {
+  const u = s => { const p = String(s).split('-'); return Date.UTC(+p[0], +p[1]-1, +p[2]); };
+  return Math.round((u(b) - u(a)) / 86400000);
+}
+// v2.22：子任務靜默判定——狀態非 done/failed，最近一筆進度（無則建立日）距今 ≥ N 天
+function isSubtaskSilent(t) {
+  if (!t.parentTaskId) return false;
+  if (t.status === 'done' || t.status === 'failed') return false;
+  const notes = Array.isArray(t.notes) ? t.notes : [];
+  const lastAt = notes.length ? notes[notes.length-1].at : (t.lastActivityAt || t.createdAt);
+  if (!lastAt) return false;
+  return daysBetween(localDay(lastAt), localDay(new Date())) >= SUBTASK_SILENT_DAYS;
+}
 
 // v2.20：客戶開發階段（Salesforce 減肥版：階段×成交機率，供加權預測用）
 const STAGE_DEF = [
@@ -1103,7 +1119,75 @@ function enterApp() {
   // v2.18：認證成功後的落地頁依身分分流——主公落「月/週/日目標」，員工/admin 仍落「任務看板」
   // （只改這處落地；其餘 go('kanban')（篩選、存檔後返回等）一律不動）
   go(STATE.me && STATE.me.isLord ? 'goals' : 'kanban');
+  showDailyAlert();   // v2.22：冷開機每日警示（一天一次）
 }
+
+// ── v2.22：冷開機每日警示——記錄與提醒的義務外移，主公不持有待辦 ──
+const DAILY_ALERT_KEY = 'dailyAlertShown';
+function showDailyAlert() {
+  try {
+    const today = localDay(new Date());
+    const key   = DAILY_ALERT_KEY + '_' + currentCompany + '_' + STATE.me.username;
+    if (localStorage.getItem(key) === today) return;          // 今天已顯示過 → 靜默
+    const items = collectAlerts();
+    if (!items.length) { localStorage.setItem(key, today); return; }
+    renderDailyAlertModal(items);
+    localStorage.setItem(key, today);
+  } catch (e) { /* 警示畫面絕不能擋登入 */ }
+}
+function collectAlerts() {
+  const today = localDay(new Date());
+  const tasks = (STATE.tasks[currentCompany] || [])
+    .filter(t => t.status !== 'done' && t.status !== 'failed');
+  const mine = t => t.assignee === STATE.me.username
+    || (Array.isArray(t.collaborators) && t.collaborators.indexOf(STATE.me.username) >= 0);
+  const scope = STATE.me.isLord ? tasks : tasks.filter(mine);
+  const out = [];
+  scope.forEach(t => {
+    if (t.midCheck && t.midCheck <= today) {
+      out.push({ type:'mid', icon:'🔍', label:'中段檢視點已到', task:t, who:t.assignee, date:t.midCheck });
+    }
+    if (isSubtaskSilent(t)) {
+      out.push({ type:'silent', icon:'🔇', label:SUBTASK_SILENT_DAYS + ' 天無進度回報', task:t, who:t.assignee });
+    }
+    if (t.deadline && t.deadline < today) {
+      out.push({ type:'overdue', icon:'⏰', label:'已逾期', task:t, who:t.assignee, date:t.deadline });
+    }
+  });
+  return out;
+}
+function renderDailyAlertModal(items) {
+  const isLordView = STATE.me.isLord;
+  const line = it => `
+    <div data-alert-task="${escapeHtml(it.task.id)}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--bg-card);">
+      <span style="flex:none;">${it.icon}</span>
+      <span style="flex:1;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(it.task.title||'(未命名)')}</span>
+      <span style="flex:none;font-size:11px;color:var(--gray-500);">${it.label}${it.date?'・'+String(it.date).slice(5):''}</span>
+    </div>`;
+  let bodyHtml;
+  if (isLordView) {
+    const groups = {};
+    items.forEach(it => { const k = it.who || '未指派'; (groups[k] = groups[k] || []).push(it); });
+    bodyHtml = Object.keys(groups).sort().map(k => `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:800;font-size:13px;margin-bottom:6px;">👤 ${escapeHtml(k)} <span style="font-weight:400;color:var(--gray-500);font-size:11px;">${groups[k].length} 件</span></div>
+        ${groups[k].map(line).join('')}
+      </div>`).join('');
+  } else {
+    bodyHtml = items.map(line).join('');
+  }
+  showModal({
+    title: isLordView ? ('☀️ 今日團隊警示 ・ ' + (COMPANY_LABEL[currentCompany]||'')) : '☀️ 今天開工前，這幾件需要你回一句話',
+    body: `<div id="dailyAlertList">${bodyHtml}</div>`,
+    foot: `<button class="btn btn-primary" onclick="closeModal(true)">知道了，開始今天</button>`
+  });
+  const list = document.getElementById('dailyAlertList');
+  if (list) list.addEventListener('click', e => {
+    const row = e.target.closest('[data-alert-task]');
+    if (row) { closeModal(true); openTaskModal(row.dataset.alertTask); }
+  });
+}
+
 function roleLabel(r) {
   return ({ lord:'總指揮', admin:'管理者', manager:'店長/主管', staff:'成員' }[r]) || r;
 }
@@ -2048,7 +2132,7 @@ function findTaskById(company, id) {
 }
 // v2.18：已離職→隱藏於人員下拉（主公拍板「先隱藏即可」：不刪帳號、不動其名下任務、歷史卡保留姓名）
 // 要讓某人重新出現，把名字從這裡移除即可（可逆）。
-const HIDDEN_STAFF = ['Dora', '冠冠'];
+const HIDDEN_STAFF = ['Dora', '冠冠', '小捲'];   // v2.22：小捲已離職（三家全隱藏；歷史卡自動保留顯示）
 
 // 負責員工下拉名單來自 lord 的 STATE.accounts（getInitData 已給、密碼已 strip）—零後端改動
 // v2.18：改為三公司聯集去重（部分員工跨公司負責業務），並濾掉已離職者
@@ -2528,11 +2612,17 @@ function openTaskModal(id) {
   // v1.6：初始化附檔暫存
   window._pendingAttachments = (data.attachments || []).slice();
 
-  // v1.4：找出本公司所有可作為「父任務」的候選（沒有 parentTaskId 的任務，且不是當前正在編輯的任務）
+  // v1.4→v2.22：父任務候選——只列未完成的；一般成員只看「自己是主負責人或協作者」的父任務
   const allTasks = STATE.tasks[currentCompany] || [];
-  const parentCandidates = allTasks.filter(t =>
-    !t.parentTaskId && t.id !== data.id && t.status !== 'failed' && t.status !== 'done'
-  );
+  const isPrivilegedView = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
+  const parentCandidates = allTasks.filter(t => {
+    if (t.parentTaskId) return false;                    // 子任務不能當父
+    if (t.id === data.id) return false;                  // 不能掛自己
+    if (t.status === 'done' || t.status === 'failed') return false;  // 已完成/失敗不顯示（hold 卡關仍顯示）
+    if (isPrivilegedView) return true;                   // 主公/admin/manager 看全部
+    return t.assignee === me.username
+        || (Array.isArray(t.collaborators) && t.collaborators.indexOf(me.username) >= 0);
+  });
   // 本任務的子任務（編輯既有父任務時顯示）
   const childTasks = data.id ? allTasks.filter(t => t.parentTaskId === data.id) : [];
   const hasChildren = childTasks.length > 0;
@@ -2562,7 +2652,7 @@ function openTaskModal(id) {
       <!-- v2.2：父子任務 UX 整合（取代舊 banner + 父任務歸屬下拉 + 專案 KPI 三段獨立區塊）-->
       <div class="field">
         <label class="field-label">① 任務名稱 <span class="req">*</span></label>
-        <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="動詞開頭，一句話講清楚要做什麼">
+        <input class="field-input" id="f-title" value="${escapeHtml(data.title)}" placeholder="請具體形容任務目標是什麼?">
       </div>
 
       <div class="noncrm-field" ${data.bizDev?'style="display:none;"':''}>${''/* v2.21.1：客戶開發卡減肥——bizDev 卡隱藏與開發無關欄位，值照存不丟 */}
@@ -2571,18 +2661,22 @@ function openTaskModal(id) {
         const lockedChild  = isChildTask;  // 已被掛在父下 → 強制鎖在「子任務」
         const noParentCandidates = parentCandidates.length === 0;
         const canBeParent = !isChildTask;  // v2.3：父任務開放所有角色（含員工）
-        const canBeChild  = !hasChildren && !noParentCandidates;
+        const canBeChild  = !hasChildren;  // v2.22：不再因無候選而禁用，改為切換時提示並切回
+        // v2.22：移除 standalone 預設——新卡一律預設父任務（部屬永遠有路可走）；既有獨立任務舊卡照常顯示
+        const isLegacySolo = !isNew && !data.isParent && !data.parentTaskId;
         const initialRel = lockedParent || data.isParent ? 'parent'
                          : lockedChild  || data.parentTaskId ? 'child'
-                         : 'standalone';
+                         : isLegacySolo ? 'standalone'
+                         : 'parent';
         return `
         <div class="field">
           <label class="field-label">② 任務層級</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${isLegacySolo ? `
             <label style="flex:1;min-width:90px;cursor:${lockedParent||lockedChild?'not-allowed':'pointer'};opacity:${lockedParent||lockedChild?'.45':'1'};border:1.5px solid ${initialRel==='standalone'?'var(--primary)':'var(--gray-200)'};background:${initialRel==='standalone'?'var(--primary-light)':'transparent'};border-radius:8px;padding:8px 6px;font-size:12.5px;text-align:center;font-weight:600;">
               <input type="radio" name="f-rel" value="standalone" ${initialRel==='standalone'?'checked':''} ${(lockedParent||lockedChild)?'disabled':''} onchange="toggleTaskRel(this.value)">
-              📌 獨立任務
-            </label>
+              📌 獨立任務（舊卡）
+            </label>` : ''}
             <label style="flex:1;min-width:90px;cursor:${(!canBeParent||lockedChild)?'not-allowed':'pointer'};opacity:${(!canBeParent||lockedChild)?'.45':'1'};border:1.5px solid ${initialRel==='parent'?'#1F4E79':'var(--gray-200)'};background:${initialRel==='parent'?'var(--primary-light)':'transparent'};border-radius:8px;padding:8px 6px;font-size:12.5px;text-align:center;font-weight:600;">
               <input type="radio" name="f-rel" value="parent" ${initialRel==='parent'?'checked':''} ${(!canBeParent||lockedChild)?'disabled':''} onchange="toggleTaskRel(this.value)">
               📦 父任務
@@ -2595,8 +2689,7 @@ function openTaskModal(id) {
           <div class="field-hint">${
             lockedParent ? `已包含 ${childTasks.length} 個子任務，僅能維持為父任務`
             : lockedChild ? `已歸屬於「${escapeHtml(allTasks.find(t=>t.id===data.parentTaskId)?.title||'未知父任務')}」`
-            : noParentCandidates ? '尚無可選父任務，需先建立父任務才能建子任務'
-            : '依層級切換下方欄位：父任務可填 KPI、子任務需選歸屬'
+            : '新任務預設為父任務；要掛在某個大任務底下，再切「↳ 子任務」'
           }</div>
         </div>
 
@@ -2610,34 +2703,27 @@ function openTaskModal(id) {
         <!-- 子任務專屬：歸屬父任務 -->
         <div class="field" id="rel-child-fields" style="display:${initialRel==='child'?'block':'none'};">
           <label class="field-label">📦 歸屬於哪個父任務 <span class="req">*</span></label>
+          ${noParentCandidates ? `
+          <select class="field-select" id="f-parent" data-empty="1" disabled>
+            <option value="">（你目前沒有可掛的父任務）</option>
+          </select>
+          <div class="field-hint" style="color:var(--orange);">你名下還沒有未完成的父任務。請先切回上方「📦 父任務」建立這張卡，之後再把細項掛成它的子任務。</div>
+          ` : `
           <select class="field-select" id="f-parent">
             <option value="">（請選擇父任務）</option>
             ${parentCandidates.map(t => `<option value="${escapeHtml(t.id)}" ${data.parentTaskId===t.id?'selected':''}>📦 ${escapeHtml(t.title)} ・ ${escapeHtml(t.assignee||'未指派')}</option>`).join('')}
           </select>
+          `}
         </div>
         `;
       })()}
 
-      ${(!isChildTask && !hasChildren) ? `
-        <div class="field">
-          <label class="field-label">任務類型</label>
-          <!-- v2.21.1：此區塊仍在 noncrm-field 容器內，CRM 卡自動隱藏 -->
-          <div style="display:flex;gap:8px;">
-            <label style="flex:1;cursor:pointer;border:1.5px solid ${data.taskType!=='adhoc'?'var(--primary)':'var(--gray-200)'};background:${data.taskType!=='adhoc'?'var(--primary-light)':'white'};border-radius:8px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;">
-              <input type="radio" name="f-taskType" value="normal" ${data.taskType!=='adhoc'?'checked':''}> 📌 一般任務 <span style="font-size:10px;color:var(--gray-500);">（規劃性、有明確 deadline）</span>
-            </label>
-            <label style="flex:1;cursor:pointer;border:1.5px solid ${data.taskType==='adhoc'?'#7C3AED':'var(--gray-200)'};background:${data.taskType==='adhoc'?'#F3E8FF':'white'};border-radius:8px;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:6px;">
-              <input type="radio" name="f-taskType" value="adhoc" ${data.taskType==='adhoc'?'checked':''}> ⚡ 機動任務 <span style="font-size:10px;color:var(--gray-500);">（零碎但容易遺忘）</span>
-            </label>
-          </div>
-          <div class="field-hint">機動任務在 ${ADHOC_SILENT_DAYS} 天無活動會自動發出警示，避免被遺忘</div>
-        </div>
-      ` : ''}
-      </div><!-- /noncrm-field（任務層級＋任務類型） -->
+      ${''/* v2.22：「任務類型」欄位自表單移除（減負）——taskType 資料欄保留、既有 adhoc 卡照常顯示、目標頁新建機動卡不受影響 */}
+      </div><!-- /noncrm-field（任務層級） -->
 
       <!-- v2.5：客戶開發分類（選了才會進甘特圖；父/子/一般任務皆可標） -->
       <div class="field">
-        <label class="field-label">客戶開發分類 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">（選了才會進甘特圖）</span></label>
+        <label class="field-label">客戶開發分類 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">（非業務開發之任務無須填寫此欄位）</span></label>
         <div style="display:flex;gap:8px;">
           <label style="flex:1;cursor:pointer;border:1.5px solid ${(!data.bizDev)?'var(--primary)':'var(--gray-200)'};background:${(!data.bizDev)?'var(--primary-light)':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
             <input type="radio" name="f-bizDev" value="" ${(!data.bizDev)?'checked':''} onchange="toggleCrmFields('')"> ⚪ 無
@@ -2709,27 +2795,25 @@ function openTaskModal(id) {
           <div class="field-hint">子任務全部 ✅ 完成時、本父任務會自動推進為「完成」狀態</div>
         </div>
       ` : ''}
+      ${(me.isLord || me.role === 'admin') ? `
       <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
-        <label class="field-label">② 為什麼（這件事服務的更大目標）</label>
+        <label class="field-label">為什麼（這件事服務的更大目標）<span style="font-size:10px;color:var(--gray-500);font-weight:400;"> ・ 主公專用</span></label>
         <textarea class="field-textarea" id="f-why" placeholder="讓接手者知道方向，遇到變化能自己取捨">${escapeHtml(data.why)}</textarea>
       </div>
-      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
-        <label class="field-label">③ 完成長什麼樣子（可驗收）</label>
-        <textarea class="field-textarea" id="f-done" placeholder="可拍照、可數字、可勾選的具體樣貌">${escapeHtml(data.doneLook)}</textarea>
-      </div>
-      <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
-        <label class="field-label">④ 紅線（不能跨過的底線）</label>
-        <textarea class="field-textarea" id="f-red" placeholder="預算、時程、品質、品牌、合作關係…">${escapeHtml(data.redLines)}</textarea>
-      </div>
+      ` : ''}${''/* v2.22：why 僅 lord/admin 可見（主公思考用）；部屬完全隱藏，值保留 */}
+      ${''/* v2.22：「③ 完成長什麼樣子」自表單移除（減負）——doneLook 資料欄與既有值保留 */}
+      ${''/* v2.22：「④ 紅線」自表單移除（減負）——redLines 資料欄與既有值保留 */}
       <div class="field-row noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <div class="field">
-          <label class="field-label">⑤ 截止日${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
+          <label class="field-label">截止日${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
           <input class="field-input" type="date" id="f-deadline" value="${data.deadline||''}" ${lockedByStaff}>
         </div>
+        ${(me.isLord || me.role === 'admin') ? `
         <div class="field">
-          <label class="field-label">中段檢視點${isStaffUser?'<span style="font-size:10px;color:var(--gray-400);font-weight:400;"> ・ 由 Kevin執行長 訂</span>':''}</label>
-          <input class="field-input" type="date" id="f-mid" value="${data.midCheck||''}" ${lockedByStaff}>
+          <label class="field-label">中段檢視點 <span style="font-size:10px;color:var(--gray-500);font-weight:400;"> ・ 留空自動取中點</span></label>
+          <input class="field-input" type="date" id="f-mid" value="${data.midCheck||''}">
         </div>
+        ` : ''}${''/* v2.22：中段檢視點僅 lord/admin 可見（覆寫用）；部屬隱藏，系統自動取中點 */}
       </div>
       <div class="field-row-3">
         <div class="field">
@@ -2745,12 +2829,7 @@ function openTaskModal(id) {
             ${Object.entries(PRIORITY).map(([k,v]) => `<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
-        <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
-          <label class="field-label">授權等級</label>
-          <select class="field-select" id="f-auth">
-            ${Object.entries(AUTH).map(([k,v]) => `<option value="${k}" ${data.authLevel===k?'selected':''}>${v}</option>`).join('')}
-          </select>
-        </div>
+        ${''/* v2.22：「授權等級」自表單移除（減負）——authLevel 資料欄保留、新卡預設 L2、卡面 auth 標籤照常顯示 */}
       </div>
       <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
         <label class="field-label">🤝 協作人員（可複選，與主負責人共扛責任）</label>
@@ -2910,16 +2989,17 @@ async function saveTask(id) {
     id: id || '',
     company: currentCompany,
     title,
-    why:        get('f-why'),
-    doneLook:   get('f-done'),
-    redLines:   get('f-red'),
     deadline:   get('f-deadline'),
-    midCheck:   get('f-mid'),
     assignee:   get('f-assignee'),
     priority:   get('f-priority'),
-    authLevel:  get('f-auth'),
     status:     get('f-status'),
   };
+  // v2.22：減負後這些欄位僅部分角色可見——元素不存在就「不送」該欄位，讓後端 Object.assign 保留既有值（坑 5）
+  [['f-why','why'],['f-done','doneLook'],['f-red','redLines'],['f-mid','midCheck'],['f-auth','authLevel']].forEach(pair => {
+    const el = document.getElementById(pair[0]);
+    if (el) task[pair[1]] = el.value.trim();
+  });
+  if (!id && task.authLevel === undefined) task.authLevel = 'L2';   // v2.22：新卡預設 L2（表單已無此欄）
   // 評分欄位（僅 admin/lord 看得到欄位，後端也會做雙重防禦）
   if (document.getElementById('f-complexity')) {
     task.complexity     = Number(get('f-complexity')) || 0;
@@ -3476,6 +3556,16 @@ function newBizDevTask(biz) {
   openTaskModal();
 }
 function toggleTaskRel(rel) {
+  // v2.22：切「子任務」但沒有可掛的父任務 → 提示並自動切回父任務（部屬不卡住）
+  if (rel === 'child') {
+    const par0 = document.getElementById('f-parent');
+    if (par0 && par0.dataset.empty === '1') {
+      showToast('你目前沒有可掛的父任務，已切回父任務模式', 'warn');
+      const pr = document.querySelector('input[name="f-rel"][value="parent"]');
+      if (pr) pr.checked = true;
+      rel = 'parent';
+    }
+  }
   const pFields = document.getElementById('rel-parent-fields');
   const cFields = document.getElementById('rel-child-fields');
   if (pFields) pFields.style.display = (rel === 'parent') ? 'block' : 'none';
