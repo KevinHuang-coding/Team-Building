@@ -127,6 +127,8 @@
   [data-theme="dark"] [style*="background:#DBEAFE"]{background:#1E3A5F !important;color:#A7C2E8 !important;}
   [data-theme="dark"] [style*="background:#E2EFDA"]{background:#1F3528 !important;color:#86EFAC !important;}
   [data-theme="dark"] [style*="background:#FBE5D6"]{background:#3D2516 !important;color:#FED7AA !important;}
+  /* v2.22.1：B2B 客戶開發選中時的 #D9E2F3 在 dark 下沒有對應規則——底色過淺導致文字看不清，補上（與 #FBE5D6/B2C 匹配）*/
+  [data-theme="dark"] [style*="background:#D9E2F3"]{background:#1E3A5F !important;color:#A7C2E8 !important;}
   /* v2.1：進度回報區塊背景（hardcoded #FAFBFF 在 dark 下變深底以拉對比）*/
   [data-theme="dark"] [style*="background:#FAFBFF"]{background:var(--gray-100) !important;}
   /* v2.1：field-hint 在 dark 下對比強化（原 --gray-400 太暗）*/
@@ -2087,7 +2089,7 @@ function findTaskById(company, id) {
 }
 // v2.18：已離職→隱藏於人員下拉（主公拍板「先隱藏即可」：不刪帳號、不動其名下任務、歷史卡保留姓名）
 // 要讓某人重新出現，把名字從這裡移除即可（可逆）。
-const HIDDEN_STAFF = ['Dora', '冠冠', '小捲'];   // v2.22：小捲已離職（三家全隱藏；歷史卡自動保留顯示）
+const HIDDEN_STAFF = ['Dora', '冠冠', '小捲', '士銓'];   // v2.22.1：小捲、士銓均已離職（三家全隱藏；歷史卡自動保留顯示，需另行交接）
 
 // 負責員工下拉名單來自 lord 的 STATE.accounts（getInitData 已給、密碼已 strip）—零後端改動
 // v2.18：改為三公司聯集去重（部分員工跨公司負責業務），並濾掉已離職者
@@ -2675,13 +2677,13 @@ function openTaskModal(id) {
       <div class="field">
         <label class="field-label">客戶開發分類 <span style="font-size:10px;color:var(--gray-500);font-weight:400;">（非業務開發之任務無須填寫此欄位）</span></label>
         <div style="display:flex;gap:8px;">
-          <label style="flex:1;cursor:pointer;border:1.5px solid ${(!data.bizDev)?'var(--primary)':'var(--gray-200)'};background:${(!data.bizDev)?'var(--primary-light)':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+          <label data-bizdev-lbl="" style="flex:1;cursor:pointer;border:1.5px solid ${(!data.bizDev)?'var(--primary)':'var(--gray-200)'};background:${(!data.bizDev)?'var(--primary-light)':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
             <input type="radio" name="f-bizDev" value="" ${(!data.bizDev)?'checked':''} onchange="toggleCrmFields('')"> ⚪ 無
           </label>
-          <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2b'?'#1F4E79':'var(--gray-200)'};background:${data.bizDev==='b2b'?'#D9E2F3':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+          <label data-bizdev-lbl="b2b" style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2b'?'#1F4E79':'var(--gray-200)'};background:${data.bizDev==='b2b'?'#D9E2F3':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
             <input type="radio" name="f-bizDev" value="b2b" ${data.bizDev==='b2b'?'checked':''} onchange="toggleCrmFields('b2b')"> 🤝 B2B 客戶開發
           </label>
-          <label style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2c'?'#C65911':'var(--gray-200)'};background:${data.bizDev==='b2c'?'#FBE5D6':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+          <label data-bizdev-lbl="b2c" style="flex:1;cursor:pointer;border:1.5px solid ${data.bizDev==='b2c'?'#C65911':'var(--gray-200)'};background:${data.bizDev==='b2c'?'#FBE5D6':'var(--bg-card)'};border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
             <input type="radio" name="f-bizDev" value="b2c" ${data.bizDev==='b2c'?'checked':''} onchange="toggleCrmFields('b2c')"> 🛒 B2C 通路
           </label>
         </div>
@@ -3497,7 +3499,22 @@ function renderTaskTimeline(task) {
 // v2.2：切換任務層級 radio 時，動態顯示對應子表單
 // v2.20：客戶開發分類切換 → 顯示/隱藏 CRM 欄位區
 // v2.21.1：同步減肥——CRM 卡隱藏無關欄位（隱藏≠清空，值照存）
+function paintBizDevLabels(v) {
+  const M = { '': {b:'var(--primary)', g:'var(--primary-light)'},
+              'b2b': {b:'#1F4E79', g:'#D9E2F3'},
+              'b2c': {b:'#C65911', g:'#FBE5D6'} };
+  document.querySelectorAll('[data-bizdev-lbl]').forEach(function(el){
+    const k = el.getAttribute('data-bizdev-lbl');
+    const on = (k === (v || ''));
+    // 必須用字串寫回 style 屬性， dark mode 的 background 屬性選取器才比對得到
+    el.setAttribute('style',
+      'flex:1;cursor:pointer;border:1.5px solid ' + (on ? M[k].b : 'var(--gray-200)') +
+      ';background:' + (on ? M[k].g : 'var(--bg-card)') +
+      ';border-radius:8px;padding:8px 10px;font-size:12px;display:flex;align-items:center;gap:6px;');
+  });
+}
 function toggleCrmFields(v) {
+  paintBizDevLabels(v);
   const box = document.getElementById('crm-fields');
   if (box) box.style.display = v ? 'block' : 'none';
   document.querySelectorAll('.noncrm-field').forEach(el => { el.style.display = v ? 'none' : ''; });
