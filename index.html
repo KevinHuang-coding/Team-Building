@@ -1177,7 +1177,7 @@ function renderDailyAlertModal(items) {
     bodyHtml = items.map(line).join('');
   }
   showModal({
-    title: isLordView ? ('☀️ 今日團隊警示 ・ ' + (COMPANY_LABEL[currentCompany]||'')) : '☀️ 今天開工前，這幾件需要你回一句話',
+    title: isLordView ? ('☀️ 今日團隊任務提示 ・ ' + (COMPANY_LABEL[currentCompany]||'')) : '☀️ 今天開工前，這幾件需要你回一句話',
     body: `<div id="dailyAlertList">${bodyHtml}</div>`,
     foot: `<button class="btn btn-primary" onclick="closeModal(true)">知道了，開始今天</button>`
   });
