@@ -206,10 +206,12 @@
   .sidenav-item .icon{width:20px;text-align:center;font-size:15px;}
 
   .main{flex:1;padding:20px 24px;overflow-y:auto;max-width:100%;}
-  .page-header{margin-bottom:20px;}
-  .page-title{font-size:22px;font-weight:800;color:var(--gray-800);margin:0 0 4px;}
+  .page-header{margin-bottom:10px;}   /* v2.22.2：壓縮 Y 空間 */
+  .page-title{font-size:20px;font-weight:800;color:var(--gray-800);margin:0 0 2px;}
   .page-sub{font-size:13px;color:var(--gray-500);margin:0;}
-  .page-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .page-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;row-gap:6px;margin-top:6px;}
+  /* v2.22.2：看板篩選下拉（取代人名按鈕列與狀態按鈕列，省兩行 Y 空間） */
+  .kanban-filter-sel{padding:5px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;background:var(--bg-card);color:var(--gray-700);max-width:210px;cursor:pointer;}
   .btn{padding:8px 14px;border-radius:8px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
   .btn-primary{background:var(--primary);color:white;}
   .btn-primary:hover{background:var(--primary-dark);}
@@ -254,13 +256,13 @@
   .perf-banner-wrap>.perf-banner{margin-top:0;border-radius:0 0 12px 12px;}
 
   /* ===== Kanban ===== */
-  .kanban{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;margin-top:8px;}
-  .kanban-col{background:var(--bg-kanban-col);border-radius:10px;padding:10px;min-height:240px;}
-  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--gray-700);margin-bottom:10px;padding:0 4px;}
+  .kanban{display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;margin-top:4px;}
+  .kanban-col{background:var(--bg-kanban-col);border-radius:10px;padding:7px;min-height:180px;}
+  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px;color:var(--gray-700);margin-bottom:6px;padding:0 4px;}
   .kanban-col-count{background:var(--bg-card);color:var(--gray-600);padding:2px 8px;border-radius:10px;font-size:11px;}
   /* v2.4 sticky 欄位標題列 */
-  .kanban-sticky-bar{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;background:var(--bg-page);padding:6px 0 4px;}
-  .kanban-sticky-bar .kanban-col-head{margin-bottom:0;background:var(--bg-kanban-col);border-radius:10px;padding:8px 14px;}
+  .kanban-sticky-bar{position:sticky;top:0;z-index:10;display:grid;grid-template-columns:repeat(6,minmax(200px,1fr));gap:10px;background:var(--bg-page);padding:2px 0 3px;}
+  .kanban-sticky-bar .kanban-col-head{margin-bottom:0;background:var(--bg-kanban-col);border-radius:10px;padding:5px 12px;}
   .kanban-col[data-status="plan"] .kanban-col-head{color:var(--gray-700);}
   .kanban-col[data-status="do"] .kanban-col-head{color:var(--primary);}
   .kanban-col[data-status="check"] .kanban-col-head{color:var(--yellow);}
@@ -268,7 +270,7 @@
   .kanban-col[data-status="hold"] .kanban-col-head{color:var(--accent);}
   .kanban-col[data-status="failed"] .kanban-col-head{color:#7C2D12;}
   .kanban-col[data-status="failed"]{background:#FEF2F2;}
-  .task-card{background:var(--bg-card);border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
+  .task-card{background:var(--bg-card);border-radius:8px;padding:7px 9px;margin-bottom:6px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
   .task-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
   /* v2.22：重要性改以整張卡底色表示（主公指定：低=粉紅/中=鵝黃/高=粉綠） */
   .task-card[data-priority="high"]{background:#E4F5E9;border-left-color:#548235;}
@@ -300,11 +302,11 @@
   [data-theme="dark"] .task-card.is-self-created{outline-color:rgba(251,191,36,.7);}
   @keyframes silentPulse{0%,100%{box-shadow:0 0 0 2px rgba(252,165,165,.5);}50%{box-shadow:0 0 0 4px rgba(252,165,165,.95);}}
   .task-card{position:relative;}
-  .dispatch-date{position:absolute;top:8px;right:10px;font-size:9px;font-weight:700;color:#6B7280;background:#F3F4F6;padding:2px 6px;border-radius:8px;letter-spacing:.02em;}
+  /* v2.22.2：建立日由「卡片右上絕對定位」改為「meta 列右下」——標題可用滿整寬，行數變少、卡片變矮 */
+  .dispatch-date{position:static;margin-left:auto;flex:0 0 auto;font-size:9px;font-weight:700;color:#6B7280;background:#F3F4F6;padding:1px 5px;border-radius:8px;letter-spacing:.02em;}
   [data-theme="dark"] .dispatch-date{background:#374151;color:#D1D5DB;}
-  .task-card .task-title{padding-right:64px;}
-  .task-title{font-weight:700;font-size:13.5px;margin:0 0 6px;color:var(--gray-800);}
-  .task-meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:11px;color:var(--gray-500);}
+  .task-title{font-weight:700;font-size:12px;line-height:1.35;margin:0 0 4px;color:var(--gray-800);}
+  .task-meta{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);}
   .task-tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--gray-100);color:var(--gray-600);font-size:10px;font-weight:600;}
   .task-tag.auth-L1{background:var(--green-light);color:var(--green);}
   .task-tag.auth-L2{background:var(--yellow-light);color:var(--yellow);}
@@ -407,7 +409,7 @@
     .status-pill{padding:4px 9px;font-size:11px;}
     .perf-grid{grid-template-columns:repeat(2,1fr);}
     .task-card{padding:10px;}
-    .dispatch-date{font-size:8.5px;top:6px;right:6px;}
+    .dispatch-date{font-size:8.5px;}
     /* 積分表小螢幕簡化欄位 */
     #scoreboardTable, #scoreboardTable > div{grid-template-columns:40px 1.2fr 60px 60px 90px !important;}
     #scoreboardTable .col-fail, #scoreboardTable .col-base, #scoreboardTable .col-collab, #scoreboardTable .col-bonus{display:none;}
@@ -1377,7 +1379,6 @@ function renderKanban(m) {
   const isLeader = me.isLord || ['admin','manager'].indexOf(me.role) >= 0;
   // v1.9：staff 也能自建任務（受三道防線限制）
   const canCreate = isLeader || me.role === 'staff';
-  const canScore = me.isLord || me.role === 'admin';
 
   // 收集所有 assignee 列表（合併目前任務指派 + 帳號清單）
   const assigneeSet = new Set();
@@ -1424,9 +1425,17 @@ function renderKanban(m) {
     t.status !== 'done' && t.status !== 'failed'
   ).length;
 
-  // 員工視角下的考績摘要
-  const showPerf = (kanbanFilter.assignee !== '*') && isLeader;
-  const perfData = showPerf ? computeMemberScore(tasks, kanbanFilter.assignee) : null;
+  // v2.22.2：考績總覽橫幅自看板移除（主公：看下屬積分請到「下屬積分表」分頁，看板只做覆盤）
+  //           computeMemberScore / perfBanner 函式保留，積分表分頁仍在用
+
+  // v2.22.2：狀態下拉的件數＝只套用「負責人」篩選後的分佈（不能用 grouped，否則選了狀態其他欄都變 0）
+  const statusCount = {};
+  KANBAN_ORDER.forEach(s => statusCount[s] = 0);
+  tasks.forEach(t => {
+    if (t.parentTaskId) return;
+    if (kanbanFilter.assignee !== '*' && t.assignee !== kanbanFilter.assignee) return;
+    if (statusCount[t.status] != null) statusCount[t.status]++;
+  });
 
   // 看板 columns 順序：依篩選決定
   const colsToShow = kanbanFilter.status === '*' ? KANBAN_ORDER : [kanbanFilter.status];
@@ -1434,14 +1443,18 @@ function renderKanban(m) {
   m.innerHTML = `
     <div class="page-header">
       <h2 class="page-title">任務看板</h2>
-      <p class="page-sub">${COMPANY_LABEL[currentCompany]} ・ ${isLeader?'領導視角':'我的任務'} ・ 共 ${tasks.length} 件（篩選後 ${filtered.length} 件）</p>
       <div class="page-actions">
         ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
         <button class="btn btn-ghost" onclick="document.getElementById('refreshBtn').click()">🔄 重新整理</button>
-        ${(kanbanFilter.assignee!=='*'||kanbanFilter.status!=='*')?`<button class="btn btn-ghost" onclick="resetKanbanFilter()">✕ 清除篩選</button>`:''}
-        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);">
-          📊 排序：
-          <select id="kanbanSortSel" style="padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;">
+        ${isLeader?`<select id="kanbanAssigneeSel" class="kanban-filter-sel" title="依負責人篩選">
+          <option value="*" ${kanbanFilter.assignee==='*'?'selected':''}>👥 全部負責人（${tasks.length}）</option>
+          ${assignees.map(a=>`<option value="${escapeHtml(a)}" ${kanbanFilter.assignee===a?'selected':''}>${escapeHtml(a)}（完成 ${doneByAssignee[a]||0}${(overdueByAssignee[a]||0)?` ・逾期 ${overdueByAssignee[a]}`:''}）</option>`).join('')}
+        </select>`:''}
+        <select id="kanbanStatusSel" class="kanban-filter-sel" title="依狀態篩選">
+          <option value="*" ${kanbanFilter.status==='*'?'selected':''}>🗂 全部狀態</option>
+          ${KANBAN_ORDER.map(s=>`<option value="${s}" ${kanbanFilter.status===s?'selected':''}>${STATUS[s].label}（${statusCount[s]}）</option>`).join('')}
+        </select>
+        <select id="kanbanSortSel" class="kanban-filter-sel" title="排序方式">
             <option value="created_asc" ${kanbanSort==='created_asc'?'selected':''}>🕐 建立日（舊→新）</option>
             <option value="smart"    ${kanbanSort==='smart'?'selected':''}>🧠 智能（延誤+重要+分數）</option>
             <option value="deadline" ${kanbanSort==='deadline'?'selected':''}>⏰ 截止日（近→遠）</option>
@@ -1449,8 +1462,7 @@ function renderKanban(m) {
             <option value="score"    ${kanbanSort==='score'?'selected':''}>★ 任務分數（高→低）</option>
             <option value="delay"    ${kanbanSort==='delay'?'selected':''}>🐢 延誤天數（多→少）</option>
             <option value="created"  ${kanbanSort==='created'?'selected':''}>📅 建立日（新→舊）</option>
-          </select>
-        </label>
+        </select>
       </div>
     </div>
 
@@ -1489,40 +1501,7 @@ function renderKanban(m) {
       `;
     })() : ''}
 
-    ${isLeader ? `
-      <div class="member-tabs">
-        <button class="member-tab ${kanbanFilter.assignee==='*'?'active':''}" data-assignee="*">全部 <span class="badge">${tasks.length}</span></button>
-        ${assignees.map(a => {
-          const overdueCount = overdueByAssignee[a] || 0;
-          const redDot = overdueCount >= 3 ? '<span style="display:inline-block;width:8px;height:8px;background:#C00000;border-radius:50%;margin-left:4px;" title="連續延誤 '+overdueCount+' 件"></span>' : '';
-          return `
-          <button class="member-tab ${kanbanFilter.assignee===a?'active':''}" data-assignee="${escapeHtml(a)}">
-            ${escapeHtml(a)}${redDot} <span class="badge">${doneByAssignee[a]||0}</span>
-          </button>
-        `;
-        }).join('')}
-      </div>
-    ` : ''}
 
-    <div class="status-pills">
-      <button class="status-pill ${kanbanFilter.status==='*'?'active':''}" data-status="*">全部</button>
-      ${KANBAN_ORDER.map(s => `
-        <button class="status-pill ${kanbanFilter.status===s?'active':''}" data-status="${s}">${STATUS[s].label}</button>
-      `).join('')}
-    </div>
-
-    ${showPerf ? perfBanner(perfData) : ''}
-
-    ${(kanbanFilter.assignee==='*' && kanbanFilter.status==='*') ? `
-      <details class="help-block">
-        <summary>💡 任務卡使用說明（軍師心法）</summary>
-        <div style="margin-top:6px;line-height:1.7;">
-          每張任務卡有五個欄位：<b>任務名稱・為什麼・完成樣貌・紅線・截止與檢核</b>。<br>
-          狀態流轉：📋 計畫 → 🚀 執行 → 🔍 檢視 → ✅ 完成（加分）；阻塞用 ⛔ Hold；放棄／失敗用 ❌ Failed（扣分）。<br>
-          ${canScore?'<b>Kevin執行長／admin 限定</b>：每張任務可設「複雜度（1-5）」「技術度（1-5）」與「加減分（-10~+10）」，作為員工年度考績依據。':''}
-        </div>
-      </details>
-    ` : ''}
 
     <div class="kanban-sticky-bar" style="${colsToShow.length===1?'grid-template-columns:1fr;':''}">
       ${colsToShow.map(s => `<div class="kanban-col-head" data-status="${s}"><span>${STATUS[s].label}</span><span class="kanban-col-count">${grouped[s].length}</span></div>`).join('')}
@@ -1544,14 +1523,10 @@ function renderKanban(m) {
     if (openBtn) { openTaskModal(openBtn.dataset.openTask); return; }
     openTaskModal(c.dataset.id);
   }));
-  m.querySelectorAll('.member-tab').forEach(b => b.addEventListener('click', () => {
-    kanbanFilter.assignee = b.dataset.assignee;
-    go('kanban');
-  }));
-  m.querySelectorAll('.status-pill').forEach(b => b.addEventListener('click', () => {
-    kanbanFilter.status = b.dataset.status;
-    go('kanban');
-  }));
+  const asgSel = document.getElementById('kanbanAssigneeSel');
+  if (asgSel) asgSel.addEventListener('change', e => { kanbanFilter.assignee = e.target.value; go('kanban'); });
+  const stSel = document.getElementById('kanbanStatusSel');
+  if (stSel) stSel.addEventListener('change', e => { kanbanFilter.status = e.target.value; go('kanban'); });
   const sortSel = document.getElementById('kanbanSortSel');
   if (sortSel) sortSel.addEventListener('change', e => {
     kanbanSort = e.target.value;
@@ -1972,11 +1947,11 @@ function taskCard(t) {
 
   return `
     <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSelf?'is-self-created':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
-      ${t.createdAt ? `<div class="dispatch-date" title="任務建立日 ・ 距今 ${ageDays} 天">📅 ${createdShort}${isSelf?' 🌟':''}</div>` : ''}
       ${isChild ? `<div style="font-size:9.5px;color:var(--gray-400);margin-bottom:2px;">↳ ${escapeHtml((parent&&parent.title)||'(已刪除父任務)')}</div>` : ''}
       <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
         <span class="task-tag" style="background:${(STATE.me && t.assignee===STATE.me.username)?'#DBEAFE':'var(--gray-100)'};color:${(STATE.me && t.assignee===STATE.me.username)?'#1F4E79':'var(--gray-600)'};">→${escapeHtml(t.assignee||'未指派')}${(STATE.me && t.assignee===STATE.me.username)?'（我）':''}</span>
+        ${t.createdAt ? `<span class="dispatch-date" title="任務建立日 ・ 距今 ${ageDays} 天">📅 ${createdShort}${isSelf?' 🌟':''}</span>` : ''}
       </div>
     </div>
   `;
