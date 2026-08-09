@@ -268,19 +268,21 @@
   .kanban-col[data-status="failed"]{background:#FEF2F2;}
   .task-card{background:var(--bg-card);border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow-sm);cursor:pointer;border-left:3px solid var(--gray-300);transition:all .15s;}
   .task-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
-  .task-card[data-priority="high"]{border-left-color:var(--accent);}
-  .task-card[data-priority="med"]{border-left-color:var(--yellow);}
-  .task-card[data-priority="low"]{border-left-color:var(--green);}
-  .task-card.is-parent{background:var(--bg-card);border:1.5px solid var(--primary);border-left-width:5px;}
-  [data-theme="light"] .task-card.is-parent, :root:not([data-theme]) .task-card.is-parent{background:linear-gradient(135deg,#FFFFFF 0%,#F0F5FB 100%);}
-  [data-theme="dark"] .task-card.is-parent{background:linear-gradient(135deg,#1E293B 0%,#28354A 100%);}
+  /* v2.22：重要性改以整張卡底色表示（主公指定：低=粉紅/中=鵝黃/高=粉綠） */
+  .task-card[data-priority="high"]{background:#E4F5E9;border-left-color:#548235;}
+  .task-card[data-priority="med"]{background:#FFF6DA;border-left-color:#BF8F00;}
+  .task-card[data-priority="low"]{background:#FDEAF0;border-left-color:#C77B9A;}
+  [data-theme="dark"] .task-card[data-priority="high"]{background:rgba(228,245,233,.14);}
+  [data-theme="dark"] .task-card[data-priority="med"]{background:rgba(255,246,218,.14);}
+  [data-theme="dark"] .task-card[data-priority="low"]{background:rgba(253,234,240,.14);}
+  /* v2.22：.is-parent 漸層背景移除（會蓋掉重要性底色），父任務識別改靠 📦 圖示與邊框 */
+  .task-card.is-parent{border:1.5px solid var(--primary);border-left-width:5px;}
   .task-card.is-parent .task-title{color:var(--primary);font-weight:800;}
   [data-theme="dark"] .task-card.is-parent .task-title{color:#A7C2E8;}
   .task-card.is-child{background:var(--bg-card);border-left-style:dashed;opacity:.95;}
   [data-theme="light"] .task-card.is-child, :root:not([data-theme]) .task-card.is-child{background:#FAFBFC;}
-  .task-card.is-adhoc{border:1.5px solid #7C3AED;border-left-width:5px;}
-  [data-theme="light"] .task-card.is-adhoc, :root:not([data-theme]) .task-card.is-adhoc{background:linear-gradient(135deg,#FAF5FF 0%,#FFFFFF 100%);}
-  [data-theme="dark"] .task-card.is-adhoc{background:linear-gradient(135deg,#3B0764 0%,#1E1B4B 100%);border-color:#A78BFA;}
+  .task-card.is-adhoc{border:1.5px solid #7C3AED;border-left-width:5px;}   /* v2.22：漸層背景移除（會蓋掉重要性底色），識別靠紫框 */
+  [data-theme="dark"] .task-card.is-adhoc{border-color:#A78BFA;}
   [data-theme="dark"] .task-card.is-adhoc .task-title{color:#EDE9FE;}
   [data-theme="dark"] .task-card.is-adhoc .task-meta{color:#C4B5FD;}
   [data-theme="dark"] .task-card.is-adhoc .task-tag{background:rgba(167,139,250,.25);color:#EDE9FE;border:1px solid rgba(167,139,250,.35);}
@@ -734,7 +736,7 @@ const SCORE_LEVELS = {
   5: '5 ・ 高階',
 };
 const BONUS_LEVELS = [-10,-7,-5,-3,-1,0,1,3,5,7,10];
-const PRIORITY = { high:'高 ⚡', med:'中', low:'低' };
+const PRIORITY = { high:'高', med:'中', low:'低' };   // v2.22：顯示文字簡化；欄位名 priority 與值不變
 const TASK_TYPE = {
   normal:  { label:'📌 一般任務',   color:'var(--gray-600)' },
   adhoc:   { label:'⚡ 機動任務',   color:'#7C3AED' },
@@ -816,7 +818,7 @@ let loginCompany = 'fb';
 let kanbanFilter = { assignee: '*', status: '*' };
 
 // v1.4：Kanban 排序維度
-let kanbanSort = 'smart';   // smart | deadline | score | priority | delay | created
+let kanbanSort = 'created_asc';   // v2.22 預設建立日正序（舊→新）；smart | deadline | score | priority | delay | created | created_asc
 
 // v1.7：積分表時間範圍
 let scoreboardRange = 'month';   // month | quarter | year | all
@@ -1438,12 +1440,13 @@ function renderKanban(m) {
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600);">
           📊 排序：
           <select id="kanbanSortSel" style="padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;">
-            <option value="smart"    ${kanbanSort==='smart'?'selected':''}>🧠 智能（延誤+優先+分數）</option>
+            <option value="created_asc" ${kanbanSort==='created_asc'?'selected':''}>🕐 建立日（舊→新）</option>
+            <option value="smart"    ${kanbanSort==='smart'?'selected':''}>🧠 智能（延誤+重要+分數）</option>
             <option value="deadline" ${kanbanSort==='deadline'?'selected':''}>⏰ 截止日（近→遠）</option>
-            <option value="priority" ${kanbanSort==='priority'?'selected':''}>⚡ 優先級（高→低）</option>
+            <option value="priority" ${kanbanSort==='priority'?'selected':''}>⚡ 重要性（高→低）</option>
             <option value="score"    ${kanbanSort==='score'?'selected':''}>★ 任務分數（高→低）</option>
             <option value="delay"    ${kanbanSort==='delay'?'selected':''}>🐢 延誤天數（多→少）</option>
-            <option value="created"  ${kanbanSort==='created'?'selected':''}>📅 創建日（新→舊）</option>
+            <option value="created"  ${kanbanSort==='created'?'selected':''}>📅 建立日（新→舊）</option>
           </select>
         </label>
       </div>
@@ -1582,10 +1585,13 @@ function getSortFn(mode, today) {
     case 'delay':
       return (a,b) => delay(b) - delay(a);
     case 'created':
-      return (a,b) => iso(b.createdAt).localeCompare(iso(a.createdAt));
+      return (a,b) => iso(b.createdAt).localeCompare(iso(a.createdAt));   // 新→舊（保留選項）
+    case 'created_asc':
+      return (a,b) => iso(a.createdAt).localeCompare(iso(b.createdAt));   // v2.22：舊→新（主公指定為預設；完整 ISO 比較保穩定次序）
     case 'smart':
-    default:
       return (a,b) => smartScore(b) - smartScore(a);
+    default:
+      return (a,b) => iso(a.createdAt).localeCompare(iso(b.createdAt));   // v2.22：未知模式一律回落建立日正序
   }
 }
 
@@ -1950,77 +1956,26 @@ function renderGantt(m) {
 }
 
 function taskCard(t) {
-  const today = new Date().toISOString().slice(0,10);
-  const overdue = t.deadline && t.deadline < today && t.status !== 'done' && t.status !== 'failed';
-  const complexity = Number(t.complexity)||0;
-  const techDiff   = Number(t.techDifficulty)||0;
-  const bonus      = Number(t.bonusPoints)||0;
-  const taskScore  = complexity + techDiff;
-  const showScore  = (complexity > 0 || techDiff > 0);
-
-  // v1.4：父子任務識別
+  // v2.22：看板卡片瘦身——只留三項（📅建立日/任務名/→負責人），細節一律點開 Modal 看（§11.8 看板＝覆盤不＝告警）
+  // 資料層不動：deadline/midCheck/authLevel/評分等仍供 Modal、冷開機警示、甘特圖、積分表使用
   const allTasks = STATE.tasks[currentCompany] || [];
   const children = allTasks.filter(c => c.parentTaskId === t.id);
   const isParent = children.length > 0 || t.isParent;
   const isChild  = !!t.parentTaskId;
   const parent   = isChild ? allTasks.find(p => p.id === t.parentTaskId) : null;
-  const doneChildren = children.filter(c => c.status === 'done').length;
-  const progressPct = children.length > 0 ? Math.round(doneChildren/children.length*100) : 0;
-
-  // v1.4：時效性自動標記
-  const timeliness = computeTimeliness(t);
-  const delayInfo = computeDelay(t, today);
-
-  // v1.6：機動任務與靜默警示
   const isAdhoc = t.taskType === 'adhoc';
-  const lastAct = t.lastActivityAt || t.updatedAt || t.createdAt;
-  const silentDays = isAdhoc && lastAct ? Math.floor((new Date() - new Date(lastAct))/86400000) : 0;
-  const isSilent = isAdhoc && ['plan','do','check','hold'].indexOf(t.status)>=0 && silentDays >= ADHOC_SILENT_DAYS;
-
-  // v1.6：派發日期（距今天數）
   const createdShort = localDay(t.createdAt).slice(5).replace('-','/');
   const ageDays = t.createdAt ? Math.floor((new Date() - new Date(t.createdAt))/86400000) : 0;
-
-  // v1.9：員工自建識別
   const isSelf = !!t.selfCreated;
 
   return `
-    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSilent?'is-silent':''} ${isSelf?'is-self-created':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
-      ${t.createdAt ? `<div class="dispatch-date" title="任務派發日 ・ 距今 ${ageDays} 天">📅 ${createdShort}${isSelf?' 🌟':''}</div>` : ''}
+    <div class="task-card ${isParent?'is-parent':''} ${isChild?'is-child':''} ${isAdhoc?'is-adhoc':''} ${isSelf?'is-self-created':''}" data-id="${t.id}" data-priority="${t.priority||'med'}">
+      ${t.createdAt ? `<div class="dispatch-date" title="任務建立日 ・ 距今 ${ageDays} 天">📅 ${createdShort}${isSelf?' 🌟':''}</div>` : ''}
       ${isChild ? `<div style="font-size:9.5px;color:var(--gray-400);margin-bottom:2px;">↳ ${escapeHtml((parent&&parent.title)||'(已刪除父任務)')}</div>` : ''}
       <div class="task-title">${isParent?'📦 ':''}${escapeHtml(t.title)}</div>
       <div class="task-meta">
-        <span class="task-tag auth-${t.authLevel||'L2'}">${(AUTH[t.authLevel]||AUTH.L2).split(' ')[0]}${t.authLevel||'L2'}</span>
         <span class="task-tag" style="background:${(STATE.me && t.assignee===STATE.me.username)?'#DBEAFE':'var(--gray-100)'};color:${(STATE.me && t.assignee===STATE.me.username)?'#1F4E79':'var(--gray-600)'};">→${escapeHtml(t.assignee||'未指派')}${(STATE.me && t.assignee===STATE.me.username)?'（我）':''}</span>
-        ${(Array.isArray(t.collaborators) && t.collaborators.length>0) ? `<span class="task-tag" style="background:#F3E8FF;color:#6B21A8;" title="協作：${t.collaborators.map(escapeHtml).join('、')}">🤝 +${t.collaborators.length}${(STATE.me && t.collaborators.indexOf(STATE.me.username)>=0)?'（含我）':''}</span>` : ''}
-        ${showScore?`<span class="task-tag" style="background:#EEF2FF;color:#3730A3;" title="複雜度${complexity} + 技術度${techDiff}">★${taskScore}</span>`:''}
-        ${bonus!==0?`<span class="task-tag" style="background:${bonus>0?'var(--green-light)':'var(--orange-light)'};color:${bonus>0?'var(--green)':'var(--orange)'};">${bonus>0?'+':''}${bonus}</span>`:''}
-        ${timeliness ? `<span class="task-tag" style="background:${timeliness.bg};color:${timeliness.color};">${timeliness.icon}</span>` : ''}
-        ${(t.deadlineEventId||t.midCheckEventId)?`<span class="task-tag" title="已同步至 Google Calendar" style="background:#E8F5E9;color:#2E7D32;font-size:10px;">📅 GCal</span>`:''}
-        ${t.midCheck?`<span style="font-size:11px;color:var(--gray-500);margin-left:4px;" title="中段檢查日">🔍 ${t.midCheck}</span>`:''}
-        ${t.deadline?`<span class="task-deadline ${overdue?'overdue':''}">⏰ ${t.deadline}${delayInfo.days>0?` (+${delayInfo.days}d)`:''}</span>`:''}
       </div>
-      ${isParent ? `
-        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
-          <div style="flex:1;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--primary),var(--green));"></div>
-          </div>
-          <span style="font-size:10px;font-weight:700;color:var(--primary);">${doneChildren}/${children.length}</span>
-        </div>
-        <!-- v2.2：子任務膠囊按鈕列（點任一膠囊展開該子任務 Modal）-->
-        ${children.length ? `
-          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
-            ${children.map(c => {
-              const cStatus = STATUS[c.status] || {};
-              const cDone = c.status === 'done';
-              const cFail = c.status === 'failed';
-              const cIcon = cDone ? '✅' : cFail ? '❌' : (c.status==='do'?'🚀':c.status==='check'?'🔍':c.status==='hold'?'⛔':'📋');
-              return `<button type="button" data-open-task="${escapeHtml(String(c.id))}" style="font-size:10.5px;padding:3px 8px;border-radius:11px;border:1px solid ${cDone?'var(--green)':cFail?'var(--accent)':'var(--gray-300)'};background:${cDone?'#ECFDF5':cFail?'#FEE2E2':'var(--bg-card)'};color:${cDone?'var(--green)':cFail?'var(--accent)':'var(--gray-700)'};cursor:pointer;${cDone?'text-decoration:line-through;':''}max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(c.title)} ・ ${escapeHtml(c.assignee||'')} ・ ${(cStatus.label||c.status)}">${cIcon} ${escapeHtml(c.title)}</button>`;
-            }).join('')}
-          </div>
-        ` : ''}
-      ` : ''}
-      ${isSilent ? `<div style="margin-top:6px;font-size:10px;color:#991B1B;font-weight:700;">⏳ 機動任務 ${silentDays} 天無進度，請確認是否被遺忘</div>` : ''}
     </div>
   `;
 }
@@ -2693,12 +2648,7 @@ function openTaskModal(id) {
           }</div>
         </div>
 
-        <!-- 父任務專屬：KPI 輸入 -->
-        <div class="field" id="rel-parent-fields" style="display:${initialRel==='parent'?'block':'none'};">
-          <label class="field-label">🎯 專案長期 KPI（選填，僅父任務適用）</label>
-          <input class="field-input" id="f-projectKPI" value="${escapeHtml(data.projectKPI||'')}" placeholder="一句話量化目標。例：6 個月內新店開幕、首月營收 ≥ X 萬">
-          <div class="field-hint">填寫此欄會自動把本卡標記為「專案父任務卡」，可在底下拆解子任務</div>
-        </div>
+        ${''/* v2.22 §11.6：「專案長期 KPI」欄位取消——任務名稱即目標；projectKPI 資料欄與既有值保留 */}
 
         <!-- 子任務專屬：歸屬父任務 -->
         <div class="field" id="rel-child-fields" style="display:${initialRel==='child'?'block':'none'};">
@@ -2824,7 +2774,7 @@ function openTaskModal(id) {
           </select>
         </div>
         <div class="field noncrm-field" ${data.bizDev?'style="display:none;"':''}>
-          <label class="field-label">優先級</label>
+          <label class="field-label">重要性</label>
           <select class="field-select" id="f-priority">
             ${Object.entries(PRIORITY).map(([k,v]) => `<option value="${k}" ${data.priority===k?'selected':''}>${v}</option>`).join('')}
           </select>
@@ -3013,7 +2963,9 @@ async function saveTask(id) {
   if (rel === 'parent') {
     task.isParent     = true;
     task.parentTaskId = '';
-    task.projectKPI   = get('f-projectKPI');
+    // v2.22 §11.6：KPI 欄已自表單移除——元素不存在就不送，後端保留既有值
+    const kpiEl = document.getElementById('f-projectKPI');
+    if (kpiEl) task.projectKPI = kpiEl.value.trim();
   } else if (rel === 'child') {
     const pid = get('f-parent');
     if (!pid) { showToast('請選擇歸屬的父任務','error'); return; }
@@ -3043,7 +2995,7 @@ async function saveTask(id) {
   task.collaborators = Array.from(document.querySelectorAll('input[name="f-collaborator"]:checked')).map(c => c.value);
   // 父任務 / 子任務的 type 由後端自動推斷，前端無需強制
   if (task.parentTaskId) task.taskType = 'subtask';
-  if (task.isParent || task.projectKPI) task.taskType = 'project';
+  if (task.isParent) task.taskType = 'project';   // v2.22 §11.6：KPI 不再決定層級
   // 附檔資料（在 step 3 補上）
   if (window._pendingAttachments) {
     task.attachments = window._pendingAttachments;
