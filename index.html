@@ -207,6 +207,9 @@
 
   .main{flex:1;padding:20px 24px;overflow-y:auto;max-width:100%;}
   .page-header{margin-bottom:10px;}   /* v2.22.2：壓縮 Y 空間 */
+  /* v2.22.3：看板頁不顯示 h2 標題（側邊欄＋頂欄已各出現一次），工具列直接貼齊上緣 */
+  .page-header--bare{margin-bottom:8px;}
+  .page-header--bare .page-actions{margin-top:0;}
   .page-title{font-size:20px;font-weight:800;color:var(--gray-800);margin:0 0 2px;}
   .page-sub{font-size:13px;color:var(--gray-500);margin:0;}
   .page-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;row-gap:6px;margin-top:6px;}
@@ -1130,8 +1133,10 @@ function enterApp() {
 
 // ── v2.22：冷開機每日警示——記錄與提醒的義務外移，主公不持有待辦 ──
 const DAILY_ALERT_KEY = 'dailyAlertShown';
+const DAILY_ALERT_ENABLED = false;   // 2026-08-09 主公指示暫時隱藏（多為離職前舊卡，晨會後整理完改回 true 重新啟用）
 function showDailyAlert() {
   try {
+    if (!DAILY_ALERT_ENABLED) return;
     const today = localDay(new Date());
     const key   = DAILY_ALERT_KEY + '_' + currentCompany + '_' + STATE.me.username;
     if (localStorage.getItem(key) === today) return;          // 今天已顯示過 → 靜默
@@ -1441,8 +1446,7 @@ function renderKanban(m) {
   const colsToShow = kanbanFilter.status === '*' ? KANBAN_ORDER : [kanbanFilter.status];
 
   m.innerHTML = `
-    <div class="page-header">
-      <h2 class="page-title">任務看板</h2>
+    <div class="page-header page-header--bare">
       <div class="page-actions">
         ${canCreate?`<button class="btn btn-primary" onclick="openTaskModal()">+ 新建任務</button>`:''}
         <button class="btn btn-ghost" onclick="document.getElementById('refreshBtn').click()">🔄 重新整理</button>
