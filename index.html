@@ -769,9 +769,10 @@ function isSubtaskSilent(t) {
 }
 
 // v2.20：客戶開發階段（Salesforce 減肥版：階段×成交機率，供加權預測用）
+// v2.22.4 主公拍板：「名單」退役（業務自留清單不上牆，上牆即已行動）——'lead' 鍵改名重用為「陌開待回」，資料零遷移
 const STAGE_DEF = [
-  { k:'lead',     label:'📋 名單',     p:0.10 },
-  { k:'contact',  label:'📞 接觸',     p:0.30 },
+  { k:'lead',     label:'📨 陌開待回', p:0.10 },
+  { k:'contact',  label:'📞 接觸中',   p:0.30 },
   { k:'proposal', label:'📝 提案報價', p:0.60 },
   { k:'won',      label:'🏆 成交',     p:1.00 },
   { k:'repeat',   label:'🔄 回購',     p:1.00 },
@@ -1675,7 +1676,7 @@ function renderGantt(m) {
   const b2cCount = items.filter(t => t.bizDev === 'b2c').length;
 
   // ── v2.20：CRM 助手（階段/久未跟進/下一步過期）──
-  const stageOf = t => STAGE_MAP[t.stage] ? t.stage : 'lead';
+  const stageOf = t => STAGE_MAP[t.stage] ? t.stage : 'contact';   // v2.22.4：未標階段的舊卡歸「接觸中」
   const isActive = t => t.status !== 'done' && t.status !== 'failed';
   const lastAct = t => localDay(t.lastActivityAt || t.updatedAt || t.createdAt) || todayStr;
   const staleDays = t => Math.max(0, diffDays(lastAct(t), todayStr));
@@ -1812,17 +1813,12 @@ function renderGantt(m) {
       const sum = cards.reduce((a,t) => a + (Number(t.dealValue)||0), 0);
       const cardsHtml = cards.map(t => {
         const b2b = t.bizDev === 'b2b';
-        const nOver = nextActOverdue(t);
+        // v2.22.4 主公指示：卡片極簡——只留「客戶名＋業務」，一屏塞最多名單；細節點開 Modal 看
+        // （金額/下一步/久未跟進等仍由 KPI 帶與「今日跟進」strip 承擔，符合 §11.8 看板＝覆盤原則）
         return `
         <div class="crm-card" data-gantt-task="${escapeHtml(t.id)}" style="border-left:4px solid ${b2b?'var(--primary)':'var(--orange)'};">
-          <div class="crm-card-cust">${t.customerName ? escapeHtml(t.customerName) : '<span style="color:var(--gray-400);font-weight:400;">（未填客戶名）</span>'} ${b2b?'🤝':'🛒'}</div>
-          <div class="crm-card-title">${escapeHtml(t.title||'(未命名)')}</div>
-          <div class="crm-card-meta"><span>${fmtMoney(t.dealValue)}</span><span>${escapeHtml(t.assignee||'未指派')}</span></div>
-          ${t.nextActionDate ? `<div class="crm-card-next ${nOver?'overdue':''}">📅 下一步 ${t.nextActionDate.slice(5)}${nOver?'（已過期）':''}</div>` : ''}
-          ${isStale(t) ? `<div class="crm-card-stale">🔴 ${staleDays(t)} 天沒動靜</div>` : ''}
-          ${repeatStale(t) ? `<div class="crm-card-stale" style="color:var(--orange);">🔔 ${staleDays(t)} 天沒回購</div>` : ''}
-          ${t.status==='done' ? '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:3px;">✅ 任務完成</div>'
-            : t.status==='failed' ? `<div style="font-size:10px;color:var(--accent);font-weight:700;margin-top:3px;">❌ 失單${t.lostReason?'：'+escapeHtml(t.lostReason):''}</div>` : ''}
+          <div class="crm-card-cust">${escapeHtml(t.customerName || t.title || '(未命名)')} ${b2b?'🤝':'🛒'}</div>
+          <div class="crm-card-meta"><span>${escapeHtml(t.assignee||'未指派')}</span></div>
         </div>`;
       }).join('') || '<div style="padding:10px;font-size:11px;color:var(--gray-400);text-align:center;">－</div>';
       return `<div class="crm-col"><div class="crm-col-head">${s.label}<span class="crm-col-sub">${cards.length} 件 ・ ${fmtMoney(sum)}</span></div>${cardsHtml}</div>`;
@@ -2544,7 +2540,7 @@ function openTaskModal(id) {
     parentTaskId: '', isParent: false, projectKPI: '',
     taskType: 'normal', attachments: [], statusHistory: [],
     bizDev: window._presetBizDev || '',   // v2.5：客戶開發分類 '' | 'b2b' | 'b2c'（v2.20：可由客戶開發頁一鍵預設）
-    customerName:'', stage:'lead', dealValue:'', nextActionDate:'', lostReason:'',   // v2.20：CRM 減肥版四欄+失單原因
+    customerName:'', stage:'contact', dealValue:'', nextActionDate:'', lostReason:'',   // v2.20 CRM 欄；v2.22.4 新卡預設「接觸中」（上牆即已行動）
     collaborators: [],
     company: currentCompany,
     createdAt:'', notes:[]
@@ -2978,7 +2974,7 @@ async function saveTask(id) {
   // v2.20：CRM 減肥版欄位（僅在有 bizDev 時有意義，但一律回存以保留歷史值）
   if (document.getElementById('f-customerName')) {
     task.customerName   = get('f-customerName');
-    task.stage          = get('f-stage') || 'lead';
+    task.stage          = get('f-stage') || 'contact';   // v2.22.4：預設接觸中
     task.dealValue      = Number(get('f-dealValue')) || 0;
     task.nextActionDate = get('f-nextActionDate');
     task.lostReason     = get('f-lostReason');
