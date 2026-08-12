@@ -858,13 +858,24 @@ async function api(action, params = {}, opts = {}) {
 
   if (!opts.silent) showLoading(true);
   try {
-    const r = await fetch(url, init);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || '伺服器錯誤');
-    return j.data;
-  } catch (e) {
-    if (e instanceof TypeError) throw new Error('連線失敗，請確認 URL 與網路');
-    throw e;
+    // v2.22.3：GAS 平台偶發回 HTML 錯誤頁（<!DOCTYPE…）或瞬斷 → 自動重試最多 3 次（0.7s/1.4s 退避）
+    // 只重試「平台打嗝」（非 JSON 回應、網路失敗）；業務錯誤（j.ok=false，如權限不足）不重試、原訊息照拋
+    let lastStatus = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const r = await fetch(url, init);
+        const text = await r.text();
+        let j;
+        try { j = JSON.parse(text); }
+        catch (pe) { lastStatus = 'HTTP ' + r.status; throw new TypeError('GAS 回應非 JSON'); }
+        if (!j.ok) throw new Error(j.error || '伺服器錯誤');
+        return j.data;
+      } catch (e) {
+        if (!(e instanceof TypeError)) throw e;                          // 業務錯誤 → 直接拋出
+        if (attempt < 3) await new Promise(res => setTimeout(res, 700 * attempt));
+      }
+    }
+    throw new Error('雲端暫時塞車（已自動重試 3 次' + (lastStatus ? '・' + lastStatus : '') + '）。您的輸入都還在畫面上沒有丟，請過幾秒再按一次「立即儲存」。');
   } finally {
     if (!opts.silent) showLoading(false);
   }
