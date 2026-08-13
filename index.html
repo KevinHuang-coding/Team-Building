@@ -2116,6 +2116,7 @@ function renderGoals(m) {
       <span><b>每日目標</b> 可指派負責員工 + <b style="color:var(--primary)">🔗 掛任務卡</b></span>
     </div>`;
   GOAL_PERIODS.forEach(renderPeriodCard);
+  restoreGoalsStash();   // v2.22.5：若上次儲存失敗有暫存，畫面就緒後自動找回
 }
 
 // native picker 值格式即 periodKey：month→type=month、week→type=week、day→type=date
@@ -2367,7 +2368,55 @@ async function saveGoals() {
     STATE = await api('getInitData'); cacheState();
     go('goals');
     setGoalsSaveStatus('✓ 已儲存', 'ok');
-  } catch (e) { showToast(e.message, 'error'); setGoalsSaveStatus('⚠ 儲存失敗', 'err'); }
+  } catch (e) { stashGoalsBackup(); showToast(e.message, 'error'); setGoalsSaveStatus('⚠ 儲存失敗', 'err'); }
+}
+
+// ── v2.22.5：目標「未存輸入」降落傘——儲存失敗（含登入逾時）當下暫存本機，重新登入後自動找回 ──
+function _goalsStashKey() { return 'goalsStash_' + ((STATE && STATE.me && STATE.me.username) || ''); }
+function stashGoalsBackup(buckets) {
+  try {
+    localStorage.setItem(_goalsStashKey(), JSON.stringify({ at: Date.now(), buckets: buckets || collectGoalBuckets() }));
+  } catch (e) {}
+}
+function restoreGoalsStash() {
+  try {
+    const raw = localStorage.getItem(_goalsStashKey());
+    if (!raw) return;
+    const st = JSON.parse(raw);
+    if (!st || !Array.isArray(st.buckets) || Date.now() - st.at > 48 * 3600 * 1000) {
+      localStorage.removeItem(_goalsStashKey()); return;
+    }
+    let applied = 0, firstEl = null;
+    st.buckets.forEach(b => {
+      const block = document.querySelector('.goal-co-block[data-company="' + b.company + '"][data-period="' + b.period + '"][data-periodkey="' + b.periodKey + '"]');
+      if (!block) return;
+      const rowsEl = block.querySelector('.goal-rows');
+      (b.items || []).forEach((it, i) => {
+        let row = rowsEl.querySelectorAll('.goal-row')[i];
+        if (!row) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = goalRowHtml(b.company, b.period, { content:'', done:'', assignee:'', linkedTaskId:'' });
+          row = tmp.querySelector('.goal-row');
+          rowsEl.appendChild(row);
+        }
+        const inp = row.querySelector('[data-k="content"]');
+        if (inp && String(it.content || '') && String(inp.value || '') !== String(it.content || '')) {
+          inp.value = it.content || '';
+          if (typeof autoGrowGoal === 'function') autoGrowGoal(inp);
+          applied++; if (!firstEl) firstEl = inp;
+        }
+        const sel = row.querySelector('[data-k="assignee"]');
+        if (sel && it.assignee && sel.value !== it.assignee) sel.value = it.assignee;
+      });
+    });
+    if (applied > 0) {
+      localStorage.removeItem(_goalsStashKey());
+      if (firstEl) markGoalsDirty(firstEl);
+      setGoalsSaveStatus('⚡ 已找回未儲存輸入', 'pending');
+      showToast('⚡ 已找回逾時前未儲存的輸入（' + applied + ' 格），請確認內容後按「立即儲存」', 'warn');
+    }
+    // 沒套上任何格（例如日期欄位不同）→ 保留暫存，等對的畫面再試；48 小時後自動失效
+  } catch (e) {}
 }
 
 // v2.16：預設「輸入即自動儲存」——打字(防抖0.8s)/勾done/改員工/刪列/blur 皆自動存
@@ -2397,6 +2446,7 @@ async function autoSaveGoals() {
     setGoalsSaveStatus('✓ 已自動儲存', 'ok');
   } catch (e) {
     setGoalsSaveStatus('⚠ 儲存失敗（點「立即儲存」重試）', 'err');
+    stashGoalsBackup(buckets);   // v2.22.5：失敗當下先暫存本機（降落傘）
     showToast('自動儲存失敗：' + e.message, 'error');
   } finally { _goalsSaving = false; }
 }
