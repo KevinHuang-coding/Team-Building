@@ -872,7 +872,9 @@ async function api(action, params = {}, opts = {}) {
         if (!j.ok) throw new Error(j.error || '伺服器錯誤');
         return j.data;
       } catch (e) {
-        if (!(e instanceof TypeError)) throw e;                          // 業務錯誤 → 直接拋出
+        // v2.22.6：「鎖定逾時」＝多人同時存檔的暫時性塞車，也列入可重試（坑 19）
+        const retryable = (e instanceof TypeError) || /鎖定逾時|佔用鎖定/.test(e.message || '');
+        if (!retryable) throw e;                                         // 其餘業務錯誤 → 直接拋出
         if (attempt < 3) await new Promise(res => setTimeout(res, 700 * attempt));
       }
     }
